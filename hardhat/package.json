@@ -1,26 +1,20 @@
 {
-  "name": "@escrow-monorepo/hardhat",
+  "name": "b2b-payments-contracts",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "files": [
-    "artifacts/contracts/**/*.json"
-  ],
+  "description": "Smart contracts for the B2B Payments & Escrow Vaults project.",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",
-    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost"
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:calibration": "hardhat run scripts/deploy.ts --network calibration"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "hardhat": "^2.24.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.3.0"
+    "@openzeppelin/contracts": "5.0.2",
+    "dotenv": "16.4.5"
   }
 }

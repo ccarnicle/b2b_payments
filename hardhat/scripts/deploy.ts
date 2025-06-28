@@ -3,15 +3,10 @@ import { ethers } from "hardhat";
 async function main() {
   console.log("Deploying contracts...");
 
-  // Deploy MockToken
-  const mockToken = await ethers.deployContract("MockToken");
-  await mockToken.waitForDeployment();
-  console.log(`MockToken deployed to: ${mockToken.target}`);
-
-  // Deploy EscrowFactory
-  const escrowFactory = await ethers.deployContract("EscrowFactory");
-  await escrowFactory.waitForDeployment();
-  console.log(`EscrowFactory deployed to: ${escrowFactory.target}`);
+  // Deploy VaultFactory
+  const VaultFactory = await ethers.deployContract("VaultFactory");
+  await VaultFactory.waitForDeployment();
+  console.log(`VaultFactory deployed to: ${VaultFactory.target}`);
 
   console.log("\nDeployment complete!");
 }
