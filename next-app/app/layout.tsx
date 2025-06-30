@@ -1,16 +1,32 @@
+// next-app/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// Import your new fonts
+import { Lora, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Web3Provider } from "@/lib/contexts/Web3Context";
 import { Providers } from './providers';
 
-const inter = Inter({ subsets: ["latin"] });
+// Configure Lora for body text
+const lora = Lora({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-lora', // CSS variable for Tailwind
+});
 
+// Configure Playfair Display for headlines
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  display: 'swap',
+  weight: ['400', '700'], // The weights you plan to use
+  variable: '--font-playfair-display', // CSS variable for Tailwind
+});
+
+// Update your site metadata
 export const metadata: Metadata = {
-  title: "Escrow Prize Pool",
-  description: "A decentralized prize pool system using ERC20 tokens.",
+  title: "Smart Pacts",
+  description: "A decentralized B2B payment and escrow platform.",
 };
 
 export default function RootLayout({
@@ -19,8 +35,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    // Apply the font variables to the <html> tag
+    <html lang="en" className={`${lora.variable} ${playfairDisplay.variable}`}>
+      <body>
         <Providers>
           <Web3Provider>
             <div className="flex flex-col min-h-screen">

@@ -4,28 +4,36 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* --- Main Theme Colors --- */
+    --background: 32.7 87.5% 96.9%; /* Your off-white background: #fef5ef */
+    --foreground: 194.1 70.2% 21%; /* Your dark green text: #0f4c5c */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* --- Brand & Action Colors --- */
+    --primary: 194.1 70.2% 21%;     /* Your dark green for primary elements/buttons */
+    --primary-foreground: 32.7 87.5% 96.9%; /* Off-white text on primary buttons */
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 98%;
+    --secondary: 192.4 33.1% 56.3%; /* Your light blue for secondary actions */
+    --secondary-foreground: 194.1 70.2% 21%; /* Dark green text on secondary buttons */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --accent: 22.9 88.2% 51.4%;      /* Your vibrant orange for highlights */
+    --accent-foreground: 32.7 87.5% 96.9%;  /* Off-white text on accent elements */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* --- Cards & Containers --- */
+    /* A pure white for cards to make them "pop" off the off-white background */
+    --card: 0 0% 100%;
+    --card-foreground: 194.1 70.2% 21%;
 
+    /* --- Neutrals & Borders --- */
+    --muted: 210 40% 90%;          /* A light gray for borders and dividers */
+    --muted-foreground: 215 20.2% 65.1%; /* A darker gray for placeholder text */
+    
+    /* --- Other --- */
     --radius: 0.5rem;
   }
 }
 
 @layer base {
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    @apply bg-background text-foreground;
   }
 }

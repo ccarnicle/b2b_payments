@@ -1,7 +1,23 @@
 'use client'; // This component now uses hooks, so it must be a client component
 
 import Link from "next/link";
+import Image from "next/image";
 import { useWeb3 } from "@/lib/contexts/Web3Context"; // <-- IMPORT our hook
+
+// A good practice is to define a component for the logo
+const Logo = () => (
+  <Link href="/" className="flex items-center gap-2">
+    <Image
+      src="/pact_logo.png" // Using your exact file name from the public folder
+      alt="Smart Pacts Logo"
+      width={40} // Your 875x875 image will be nicely scaled down to 40x40
+      height={40}
+    />
+    <span className="text-2xl font-bold text-primary">
+      Smart Pacts
+    </span>
+  </Link>
+);
 
 export default function Header() {
   const { login, logout, account, authenticated } = useWeb3(); // <-- USE our hook
@@ -13,9 +29,7 @@ export default function Header() {
   return (
     <header className="border-b border-secondary">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold text-primary">
-          🏆 PrizePool
-        </Link>
+        <Logo />
         <nav className="flex items-center space-x-4">
           <Link href="/create" className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium">
             Create Pool

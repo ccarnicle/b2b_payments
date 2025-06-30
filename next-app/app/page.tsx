@@ -1,106 +1,100 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ethers } from 'ethers';
-import PoolCard from "@/components/PoolCard";
 import { useWeb3 } from '@/lib/contexts/Web3Context';
-import { ESCROW_FACTORY_ADDRESS, ESCROW_FACTORY_ABI } from '@/lib/contracts';
+import { VaultCard } from '@/components/VaultCard'; // We will create this next
+import Link from 'next/link';
+import { type EventLog } from 'ethers';
 
-// The shape of our pool data, mirroring the PoolCard component's needs
-interface Pool {
-  id: number;
-  name: string; // We'll use the ID as a placeholder for now
-  organizer: string;
-  tokenSymbol: string; // We'll use the contract address as a placeholder
-  dues: string;
-  totalPot: string;
-  endsIn: string; // We'll calculate this
+// Define a type for our vault data to use in the frontend
+interface Vault {
+  id: string;
+  funder: string;
+  beneficiary: string;
+  vaultType: number;
+  totalAmount: string;
 }
 
 export default function Home() {
-  const { contract } = useWeb3();
-  const [pools, setPools] = useState<Pool[]>([]);
+  const { vaultFactoryContract, provider } = useWeb3();
+  const [vaults, setVaults] = useState<Vault[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPools = async () => {
-      // We don't need to connect wallet to view pools, so we can create a read-only provider
-      // if the contract instance (with a signer) isn't ready yet.
-      let readOnlyContract = contract;
-      if (!readOnlyContract) {
-        try {
-            const provider = new ethers.JsonRpcProvider('http://127.0.0.1:8545/');
-            readOnlyContract = new ethers.Contract(ESCROW_FACTORY_ADDRESS, ESCROW_FACTORY_ABI, provider);
-        } catch (e) {
-            console.error("Could not create a read-only provider.", e);
-            setIsLoading(false);
-            return;
-        }
-      }
-      
+    const fetchVaults = async () => {
+      if (!vaultFactoryContract || !provider) return;
+
       setIsLoading(true);
       try {
-        const createdFilter = readOnlyContract.filters.EscrowCreated();
-        const events = await readOnlyContract.queryFilter(createdFilter);
-        
-        const poolPromises = events.map(async (event) => {
-          // This is the type guard. We check if 'args' exists on the event object.
-          if (!('args' in event)) {
-            console.warn("Found a log that could not be parsed:", event);
-            return null;
+        // On networks like Filecoin Calibration, querying logs from the genesis block
+        // is not allowed. We need to query in smaller chunks over a recent period.
+        const currentBlock = await provider.getBlockNumber();
+        const chunkRange = 1800; // The query range, safely below the node's limit of ~2000 blocks.
+        const totalLookbackRange = 100000; // How far back to search in total (~1 month).
+
+        const filter = vaultFactoryContract.filters.VaultCreated();
+        const collectedLogs: (EventLog)[] = [];
+
+        // We iterate backwards from the current block in chunks.
+        for (let i = currentBlock; i > currentBlock - totalLookbackRange; i -= chunkRange) {
+          const fromBlock = Math.max(0, i - chunkRange + 1);
+          const toBlock = i;
+          
+          try {
+            const logs = await vaultFactoryContract.queryFilter(filter, fromBlock, toBlock);
+            collectedLogs.push(...(logs as EventLog[]));
+          } catch (error) {
+              console.warn(`Could not fetch logs for range ${fromBlock}-${toBlock}.`, error);
           }
-
-          // From here on, TypeScript knows that event is an EventLog with an 'args' property.
-          const escrowId = event.args.escrowId;
-          
-          const details = await readOnlyContract!.getEscrowDetails(escrowId);
-          
-          const endsInMs = Number(details.endTime) * 1000 - Date.now();
-          // Handle pools that have already ended
-          const endsInDays = endsInMs > 0 ? Math.ceil(endsInMs / (1000 * 60 * 60 * 24)) : 0;
-
-          return {
-            id: Number(escrowId),
-            name: `Pool #${escrowId}`,
-            organizer: details.organizer,
-            tokenSymbol: 'Tokens', // Generic placeholder
-            dues: ethers.formatUnits(details.dues, 18), // Use formatUnits for flexibility
-            totalPot: ethers.formatUnits(details.totalAmount, 18), // Assuming 18 decimals for now
-            endsIn: endsInDays > 0 ? `${endsInDays} day(s)` : 'Ended',
-          };
-        });
-
-        const resolvedPools = (await Promise.all(poolPromises)).filter(p => p !== null) as Pool[];
-        setPools(resolvedPools.reverse());
+        }
+        
+        // Map the event logs to a more usable format
+        const fetchedVaults = collectedLogs
+          .filter((log): log is EventLog => 'args' in log)
+          .map(log => ({
+          id: log.args.vaultId.toString(),
+          funder: log.args.funder,
+          beneficiary: log.args.beneficiary,
+          vaultType: log.args.vaultType,
+          totalAmount: log.args.totalAmount.toString(),
+        }));
+        
+        // Reverse the array to show the newest vaults first
+        setVaults(fetchedVaults.reverse());
       } catch (error) {
-        console.error("Failed to fetch pools:", error);
+        console.error("Failed to fetch vaults:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPools();
-  }, [contract]); // This dependency array is correct.
+    fetchVaults();
+  }, [vaultFactoryContract, provider]); // Rerun when the contract is available
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold">Active Prize Pools</h1>
-        <p className="text-foreground/80 mt-2">
-          Join an existing pool or create your own.
+    <div>
+      <div className="text-center my-8">
+        <h1 className="text-4xl font-bold font-display">Active Smart Pacts</h1>
+        <p className="mt-2 text-lg text-muted-foreground">
+          A transparent, on-chain record of all created payment vaults.
         </p>
       </div>
 
       {isLoading ? (
-        <p>Loading pools...</p>
-      ) : pools.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pools.map((pool) => (
-            <PoolCard key={pool.id} pool={pool} />
-          ))}
+        <p className="text-center">Loading vaults from the blockchain...</p>
+      ) : vaults.length === 0 ? (
+        <div className="text-center p-8 bg-card rounded-lg">
+          <p className="mb-4">No vaults found. Be the first to create one!</p>
+          <Link href="/create" className="bg-accent text-accent-foreground px-6 py-3 rounded-md font-bold">
+            Create a Vault
+          </Link>
         </div>
       ) : (
-        <p>No active pools found. Why not create one?</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {vaults.map((vault) => (
+            <VaultCard key={vault.id} vault={vault} />
+          ))}
+        </div>
       )}
     </div>
   );

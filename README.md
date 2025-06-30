@@ -19,38 +19,40 @@ Our solution is **Smart Escrow Vaults** — a modular system for milestone-based
 
 ## 📂 Repository Structure
 
-This repository contains two main packages. It is **not** an `npm` workspace monorepo, but rather two independent projects co-located for simplicity.
+This repository contains two main packages. It is **not** a monorepo, but rather two independent projects co-located for simplicity.
 
 -   **`hardhat/`**: Contains all Solidity smart contracts, tests, and deployment scripts for the FVM.
 -   **`next-app/`**: Contains the Next.js frontend application.
+
 ## 📁 Project File Structure
 
+```text
 b2b_payments/
 ├── hardhat/
-│ ├── contracts/
-│ │ └── VaultFactory.sol
-│ ├── scripts/
-│ │ └── deploy.ts
-│ ├── test/
-│ │ └── VaultFactory.ts
-│ ├── hardhat.config.ts # Configured for FVM Calibration Testnet
-│ └── package.json
+│   ├── contracts/
+│   │   └── VaultFactory.sol
+│   ├── scripts/
+│   │   └── deploy.ts
+│   ├── test/
+│   │   └── VaultFactory.ts
+│   ├── hardhat.config.ts    # Configured for FVM Calibration Testnet
+│   └── package.json
 │
 └── next-app/
-├── app/
-│ ├── api/
-│ │ └── generate-upload-url/
-│ │ └── route.ts # Secure API route for Pinata signed URLs
-│ ├── create/
-│ ├── vault/
-│ │ └── [id]/
-│ └── page.tsx # Homepage
-├── components/
-│ └── CreateVaultForm.tsx # Component with IPFS upload logic
-├── utils/
-│ └── pinata.ts # Server-only Pinata SDK config
-└── package.json
-      
+    ├── app/
+    │   ├── api/
+    │   │   └── generate-upload-url/
+    │   │       └── route.ts         # Secure API route for Pinata signed URLs
+    │   ├── create/
+    │   ├── vault/
+    │   │   └── [id]/
+    │   └── page.tsx                 # Homepage
+    ├── components/
+    │   └── CreateVaultForm.tsx     # Component with IPFS upload logic
+    ├── utils/
+    │   └── pinata.ts               # Server-only Pinata SDK config
+    └── package.json
+```
 
 ## ✅ Current Status: Phase 1 Complete - Smart Contract Live!
 
