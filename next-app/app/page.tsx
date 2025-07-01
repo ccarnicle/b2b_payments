@@ -55,7 +55,7 @@ export default function Home() {
           id: log.args.vaultId.toString(),
           funder: log.args.funder,
           beneficiary: log.args.beneficiary,
-          vaultType: log.args.vaultType,
+          vaultType: Number(log.args.vaultType),       
           totalAmount: log.args.totalAmount.toString(),
         }));
         

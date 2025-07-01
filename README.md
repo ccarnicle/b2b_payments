@@ -54,24 +54,21 @@ b2b_payments/
     └── package.json
 ```
 
-## ✅ Current Status: Phase 1 Complete - Smart Contract Live!
+## ✅ Current Status: Phase 2 Complete - MVP Functionally Live
+The core functionality of the application is complete and has been tested end-to-end on the Filecoin Calibration testnet.
 
-The backend foundation of the project is complete, tested, and live on the testnet.
-
--   **✅ Smart Contract Refactored & Complete:** The new `VaultFactory.sol` contract has been written. It supports two distinct payout models: `TimeLocked` vaults that unlock at a specific time, and `Milestone` vaults where the funder can release payments sequentially.
--   **✅ Comprehensive Test Suite:** A full test suite (`VaultFactory.ts`) with **14 passing tests** has been developed, ensuring all logic for creating vaults, handling funds, and processing payouts is secure and correct.
--   **✅ Deployed to Filecoin Calibration Testnet:** The `VaultFactory` contract is **live on the Filecoin Calibration testnet**. The frontend environment has been configured with the contract's address, ready for integration.
+- **Dual Pact System:** The smart contract supports two distinct use cases: **1-to-many Prize Pools** for hackathons and **1-to-1 Milestone grants** for freelance work.
+- **End-to-End Flow:** Users can successfully create a pact, fund it, have the terms stored on IPFS, view all pacts on a homepage, see detailed information on a dedicated page, and distribute funds as the funder.
+- **Polished Frontend Foundation:** The application features a custom color palette, typography, and robust state management for all user interactions.
 
 ## 🚀 Hackathon Roadmap
 
-### **Next Up: Days 3-6 - Frontend Development**
--   Re-skin the UI to match the "Smart Vaults" branding.
--   Integrate the `CreateVaultForm` to interact with the new `createTimeLockedVault` and `createMilestoneVault` functions on our live smart contract.
--   Build the Vault Detail page to display on-chain data and the associated milestone agreement from IPFS.
--   Implement the frontend logic for the `releaseTimeLockedFunds` (for the beneficiary) and `releaseNextMilestone` (for the funder) functions.
+### **Next Up: Phase 3 (Days 7-8) - Polish & Expansion**
+- [ ] **UI Overhaul:** Refactor the application into a dashboard layout with a dedicated landing page.
+- [ ] **Flow EVM Deployment:** Deploy the `VaultFactory` contract to the Flow EVM Testnet.
+- [ ] **Multi-Chain Integration:** Implement a network context and UI switcher to allow users to toggle between Filecoin and Flow networks.
 
-### **Later: Days 7-9 - Submission Prep**
--   Record the demo video.
--   Finalize the project summary and documentation.
--   Deploy the live application to Vercel/Netlify.
--   Submit!
+### **Finally: Phase 4 (Day 9) - Submission**
+- [ ] Record the final demo video showcasing both use cases and multi-chain functionality.
+- [ ] Finalize all documentation.
+- [ ] Triple-check all submission requirements and submit the project.

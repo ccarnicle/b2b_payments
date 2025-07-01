@@ -3,32 +3,30 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
-import { useWeb3 } from '@/lib/contexts/Web3Context'; // Import your custom hook
+import { useWeb3 } from '@/lib/contexts/Web3Context';
 import { PinataSDK } from 'pinata';
-import Erc20Abi from '@/lib/abi/Erc20.json'; // The ERC20 ABI is still needed for the 'approve' function
+import Erc20Abi from '@/lib/abi/Erc20.json';
 import { VAULT_FACTORY_ADDRESS } from '@/lib/contracts';
 
-// Initialize Pinata SDK for client-side use
 const pinata = new PinataSDK({});
 
-type VaultType = "TimeLocked" | "Milestone";
+// UPDATED: VaultType now reflects the contract's enum
+type VaultType = "PrizePool" | "Milestone";
 
 export default function CreateVaultForm() {
     const router = useRouter();
-    // Use the context to get the signer and the pre-configured VaultFactory contract
     const { signer, vaultFactoryContract } = useWeb3(); 
 
-    // --- FORM STATE (remains the same) ---
-    const [vaultType, setVaultType] = useState<VaultType>("TimeLocked");
+    // UPDATED: Initial state is now "PrizePool"
+    const [vaultType, setVaultType] = useState<VaultType>("PrizePool");
     const [beneficiary, setBeneficiary] = useState("");
-    const [tokenAddress, setTokenAddress] = useState(""); // USDFC Address
+    const [tokenAddress, setTokenAddress] = useState("0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0"); // Pre-filled USDFC Testnet address
     const [terms, setTerms] = useState("");
     const [releaseDate, setReleaseDate] = useState("");
     const [releaseTime, setReleaseTime] = useState("");
     const [totalAmount, setTotalAmount] = useState("");
     const [milestoneAmounts, setMilestoneAmounts] = useState("");
 
-    // --- UI & TRANSACTION STATE (remains the same) ---
     const [isApproving, setIsApproving] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [isApproved, setIsApproved] = useState(false);
@@ -37,7 +35,8 @@ export default function CreateVaultForm() {
 
     const amountToApprove = useMemo(() => {
         try {
-            if (vaultType === 'TimeLocked') {
+            // UPDATED: Renamed to PrizePool
+            if (vaultType === 'PrizePool') {
                 return ethers.parseUnits(totalAmount || '0', 6);
             } else {
                 const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim() || '0', 6));
@@ -49,11 +48,11 @@ export default function CreateVaultForm() {
     const needsApproval = amountToApprove > 0n;
 
     const handleApprove = async () => {
+        // ... approve logic is unchanged, as it's just for the ERC20 token
         if (!signer || !tokenAddress) {
             setError("Please connect your wallet and provide a token address.");
             return;
         }
-        // ... (rest of handleApprove logic is the same, as it creates a *token* contract)
         setError('');
         setStatusMessage('Requesting approval from your wallet...');
         setIsApproving(true);
@@ -75,7 +74,6 @@ export default function CreateVaultForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Check for the contract instance from the context
         if (!vaultFactoryContract) { 
             setError('Wallet not connected or contract not initialized.');
             return;
@@ -85,23 +83,33 @@ export default function CreateVaultForm() {
         setIsCreating(true);
 
         try {
-            // Step 1: IPFS Upload (same as before)
+            // UPDATED: IPFS upload no longer includes beneficiary for PrizePools
             setStatusMessage("Uploading agreement to IPFS...");
-            const vaultData = { beneficiary, tokenAddress, terms, vaultType };
-            const jsonFile = new File([JSON.stringify(vaultData)], "vault-terms.json", { type: "application/json" });
+            const ipfsData = vaultType === 'Milestone' 
+                ? { beneficiary, tokenAddress, terms, vaultType }
+                : { tokenAddress, terms, vaultType }; // No beneficiary for PrizePool
+            const jsonFile = new File([JSON.stringify(ipfsData)], "vault-terms.json", { type: "application/json" });
+            
             const urlRequest = await fetch("/api/upload");
             const { url: signedUrl } = await urlRequest.json();
             const uploadResult = await pinata.upload.public.file(jsonFile).url(signedUrl);
             const termsCID = uploadResult.cid;
             setStatusMessage(`Agreement stored. Preparing transaction...`);
 
-            // Step 2: Smart Contract Interaction - Now using the contract from context
             let tx;
-            if (vaultType === "TimeLocked") {
+            // --- UPDATED: Switched to new contract functions ---
+            if (vaultType === "PrizePool") {
                 const releaseTimestamp = Math.floor(new Date(`${releaseDate}T${releaseTime}`).getTime() / 1000);
-                setStatusMessage("Sending transaction to create Time-Locked Vault...");
-                tx = await vaultFactoryContract.createTimeLockedVault(beneficiary, tokenAddress, amountToApprove, releaseTimestamp, termsCID);
+                setStatusMessage("Sending transaction to create Prize Pool Vault...");
+                // Calls createPrizePoolVault with no beneficiary
+                tx = await vaultFactoryContract.createPrizePoolVault(tokenAddress, amountToApprove, releaseTimestamp, termsCID);
             } else {
+                // For Milestone, we now add a check for the beneficiary address
+                if (!ethers.isAddress(beneficiary)) {
+                    setError("A valid beneficiary address is required for Milestone vaults.");
+                    setIsCreating(false);
+                    return;
+                }
                 const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), 6));
                 setStatusMessage("Sending transaction to create Milestone Vault...");
                 tx = await vaultFactoryContract.createMilestoneVault(beneficiary, tokenAddress, payouts, termsCID);
@@ -111,16 +119,16 @@ export default function CreateVaultForm() {
             setStatusMessage('✅ Vault created successfully! Redirecting...');
             setTimeout(() => router.push('/'), 3000);
 
-        } catch (err) {
+        } catch (err: unknown) {
             console.error("Error creating vault:", err);
-            setError("An error occurred creating the vault.");
+            setError((err as { reason: string }).reason || "An error occurred creating the vault.");
             setStatusMessage('');
         } finally {
             setIsCreating(false);
         }
     };
 
-    // --- JSX (UI) part remains exactly the same ---
+    // --- JSX (UI) part with updated logic ---
     const inputStyles = "w-full p-2 bg-background border border-muted rounded-md focus:ring-2 focus:ring-primary text-foreground";
     const labelStyles = "font-bold text-foreground/90";
     const buttonStyles = "px-4 py-3 rounded-md font-bold text-sm transition-opacity";
@@ -129,27 +137,33 @@ export default function CreateVaultForm() {
     return (
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-card p-6 sm:p-8 rounded-lg border border-muted space-y-6">
             <div className="grid grid-cols-2 gap-2 p-1 bg-background rounded-md">
-                <button type="button" onClick={() => setVaultType("TimeLocked")} className={`${buttonStyles} ${vaultType === 'TimeLocked' ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}>Time-Locked</button>
-                <button type="button" onClick={() => setVaultType("Milestone")} className={`${buttonStyles} ${vaultType === 'Milestone' ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}>Milestone-Based</button>
+                {/* UPDATED: Button text */}
+                <button type="button" onClick={() => setVaultType("PrizePool")} className={`${buttonStyles} ${vaultType === 'PrizePool' ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}>Prize Pool</button>
+                <button type="button" onClick={() => setVaultType("Milestone")} className={`${buttonStyles} ${vaultType === 'Milestone' ? 'bg-primary text-primary-foreground' : 'hover:bg-background'}`}>Milestone</button>
             </div>
-            {/* ... all your other input fields ... */}
-             <div className="space-y-2">
-                <label htmlFor="beneficiary" className={labelStyles}>Beneficiary Address</label>
-                <input id="beneficiary" type="text" value={beneficiary} onChange={e => setBeneficiary(e.target.value)} className={inputStyles} placeholder="0x..." required />
-            </div>
+            
+            {/* UPDATED: Conditionally render beneficiary input */}
+            {vaultType === "Milestone" && (
+                <div className="space-y-2">
+                    <label htmlFor="beneficiary" className={labelStyles}>Beneficiary Address</label>
+                    <input id="beneficiary" type="text" value={beneficiary} onChange={e => setBeneficiary(e.target.value)} className={inputStyles} placeholder="0x..." required={vaultType === "Milestone"} />
+                </div>
+            )}
+
             <div className="space-y-2">
                 <label htmlFor="tokenAddress" className={labelStyles}>Token Address (USDFC)</label>
                 <input id="tokenAddress" type="text" value={tokenAddress} onChange={e => { setTokenAddress(e.target.value); setIsApproved(false); }} className={inputStyles} placeholder="0x..." required />
             </div>
             <div className="space-y-2">
                 <label htmlFor="terms" className={labelStyles}>Terms & Deliverables</label>
-                <textarea id="terms" value={terms} onChange={e => setTerms(e.target.value)} className={inputStyles} rows={4} placeholder="Define the scope of work, milestones, or grant agreement..." required />
+                <textarea id="terms" value={terms} onChange={e => setTerms(e.target.value)} className={inputStyles} rows={4} placeholder="e.g., Hackathon rules, project grant scope..." required />
             </div>
 
-            {vaultType === "TimeLocked" ? (
+            {/* UPDATED: Renamed to PrizePool */}
+            {vaultType === "PrizePool" ? (
                 <div className="space-y-4 p-4 border border-muted rounded-md bg-background/50">
-                    <h3 className="font-display font-bold text-lg">Time-Lock Details</h3>
-                    <input type="text" value={totalAmount} onChange={e => { setTotalAmount(e.target.value); setIsApproved(false); }} className={inputStyles} placeholder="Total Amount to Lock" required />
+                    <h3 className="font-display font-bold text-lg">Prize Pool Details</h3>
+                    <input type="text" value={totalAmount} onChange={e => { setTotalAmount(e.target.value); setIsApproved(false); }} className={inputStyles} placeholder="Total Prize Pool Amount" required />
                     <div className="flex flex-col sm:flex-row gap-4">
                         <input type="date" value={releaseDate} onChange={e => setReleaseDate(e.target.value)} className={inputStyles} required />
                         <input type="time" value={releaseTime} onChange={e => setReleaseTime(e.target.value)} className={inputStyles} required />
@@ -159,7 +173,7 @@ export default function CreateVaultForm() {
                 <div className="space-y-4 p-4 border border-muted rounded-md bg-background/50">
                     <h3 className="font-display font-bold text-lg">Milestone Details</h3>
                     <input type="text" value={milestoneAmounts} onChange={e => { setMilestoneAmounts(e.target.value); setIsApproved(false); }} className={inputStyles} placeholder="e.g., 100, 250, 150" required />
-                    <p className="text-sm text-muted-foreground">Enter amounts separated by commas. The total will be calculated and deposited upfront.</p>
+                    <p className="text-sm text-muted-foreground">Enter amounts separated by commas.</p>
                 </div>
             )}
 
@@ -170,7 +184,7 @@ export default function CreateVaultForm() {
                     </button>
                 )}
                 <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved)} className={`${buttonStyles} ${needsApproval ? 'w-full sm:w-1/2' : 'w-full'} bg-accent text-accent-foreground hover:bg-accent/90 ${disabledStyles}`}>
-                    {isCreating ? 'Creating Vault...' : (needsApproval ? '2. Create & Fund Vault' : 'Create & Fund Vault')}
+                    {isCreating ? 'Creating...' : (needsApproval ? '2. Create Vault' : 'Create Vault')}
                 </button>
             </div>
 
