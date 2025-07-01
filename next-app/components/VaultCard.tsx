@@ -37,7 +37,7 @@ export function VaultCard({ vault }: { vault: Vault }) {
                     )}
                 </div>
             </div>
-            <Link href={`/vault/${vault.id}`} className="mt-6 block text-center w-full bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90">
+            <Link href={`/dashboard/pact/${vault.id}`} className="mt-6 block text-center w-full bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90">
                 View Details
             </Link>
         </div>

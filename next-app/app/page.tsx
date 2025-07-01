@@ -1,101 +1,146 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useWeb3 } from '@/lib/contexts/Web3Context';
-import { VaultCard } from '@/components/VaultCard'; // We will create this next
 import Link from 'next/link';
-import { type EventLog } from 'ethers';
+import Image from 'next/image';
 
-// Define a type for our vault data to use in the frontend
-interface Vault {
-  id: string;
-  funder: string;
-  beneficiary: string;
-  vaultType: number;
-  totalAmount: string;
-}
-
-export default function Home() {
-  const { vaultFactoryContract, provider } = useWeb3();
-  const [vaults, setVaults] = useState<Vault[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchVaults = async () => {
-      if (!vaultFactoryContract || !provider) return;
-
-      setIsLoading(true);
-      try {
-        // On networks like Filecoin Calibration, querying logs from the genesis block
-        // is not allowed. We need to query in smaller chunks over a recent period.
-        const currentBlock = await provider.getBlockNumber();
-        const chunkRange = 1800; // The query range, safely below the node's limit of ~2000 blocks.
-        const totalLookbackRange = 100000; // How far back to search in total (~1 month).
-
-        const filter = vaultFactoryContract.filters.VaultCreated();
-        const collectedLogs: (EventLog)[] = [];
-
-        // We iterate backwards from the current block in chunks.
-        for (let i = currentBlock; i > currentBlock - totalLookbackRange; i -= chunkRange) {
-          const fromBlock = Math.max(0, i - chunkRange + 1);
-          const toBlock = i;
-          
-          try {
-            const logs = await vaultFactoryContract.queryFilter(filter, fromBlock, toBlock);
-            collectedLogs.push(...(logs as EventLog[]));
-          } catch (error) {
-              console.warn(`Could not fetch logs for range ${fromBlock}-${toBlock}.`, error);
-          }
-        }
-        
-        // Map the event logs to a more usable format
-        const fetchedVaults = collectedLogs
-          .filter((log): log is EventLog => 'args' in log)
-          .map(log => ({
-          id: log.args.vaultId.toString(),
-          funder: log.args.funder,
-          beneficiary: log.args.beneficiary,
-          vaultType: Number(log.args.vaultType),       
-          totalAmount: log.args.totalAmount.toString(),
-        }));
-        
-        // Reverse the array to show the newest vaults first
-        setVaults(fetchedVaults.reverse());
-      } catch (error) {
-        console.error("Failed to fetch vaults:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchVaults();
-  }, [vaultFactoryContract, provider]); // Rerun when the contract is available
-
+export default function LandingPage() {
   return (
-    <div>
-      <div className="text-center my-8">
-        <h1 className="text-4xl font-bold font-display">Active Smart Pacts</h1>
-        <p className="mt-2 text-lg text-muted-foreground">
-          A transparent, on-chain record of all created payment vaults.
-        </p>
-      </div>
+    <main className="bg-background text-foreground">
+      {/* Hero Section */}
+      <section className="py-2">
+        <div className="container mx-auto px-6">
+          <div className="bg-primary text-primary-foreground rounded-2xl p-12 grid md:grid-cols-5 gap-12 items-center">
+            <div className="space-y-6 md:col-span-3">
+              <p className="font-semibold text-secondary-foreground">Smart Pacts for Independent Creators</p>
+              <h1 className="text-5xl font-bold font-display tracking-tight leading-relaxed">
+                Payments, simplified.
+                <br />
+                Work, empowered.
+              </h1>
+              <ul className="space-y-3 text-lg">
+                <li className="flex items-center">
+                  <span className="mr-3">✅</span>
+                  Trustless, onchain agreements
+                </li>
+                <li className="flex items-center">
+                  <span className="mr-3">✅</span>
+                  Milestone-based payouts
+                </li>
+                <li className="flex items-center">
+                  <span className="mr-3">✅</span>
+                  Terms secured on Filecoin
+                </li>
+              </ul>
+              <div className="text-center lg:text-left">
+                <Link
+                  href="/dashboard/active"
+                  className="inline-block bg-accent text-accent-foreground font-bold py-3 px-8 rounded-lg text-lg hover:bg-opacity-90 transition-colors shadow-lg hover:shadow-xl"
+                >
+                  Launch App
+                </Link>
+              </div>
+            </div>
+            <div className="hidden md:flex justify-center items-center md:col-span-2">
+              <div className="w-full max-w-md h-80 overflow-hidden rounded-xl shadow-2xl relative">
+                <Image 
+                  src="/hero_image.svg" 
+                  alt="Pacts Hero Illustration" 
+                  fill
+                  className="object-cover object-center"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {isLoading ? (
-        <p className="text-center">Loading vaults from the blockchain...</p>
-      ) : vaults.length === 0 ? (
-        <div className="text-center p-8 bg-card rounded-lg">
-          <p className="mb-4">No vaults found. Be the first to create one!</p>
-          <Link href="/create" className="bg-accent text-accent-foreground px-6 py-3 rounded-md font-bold">
-            Create a Vault
+      {/* Feature Cards Section */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-6 grid md:grid-cols-3 gap-8 text-center">
+          {/* Card 1 */}
+          <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
+            <div className="text-5xl mb-4">💡</div>
+            <h3 className="text-2xl font-bold mb-2">Prize Pools & Grants</h3>
+            <p className="text-muted-foreground mb-6">
+              Easily fund hackathons, bounties, and community initiatives with multi-recipient payouts.
+            </p>
+            <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
+              Learn More
+            </a>
+          </div>
+          {/* Card 2 */}
+          <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
+            <div className="text-5xl mb-4">💰</div>
+            <h3 className="text-2xl font-bold mb-2">Milestone-Based Contracts</h3>
+            <p className="text-muted-foreground mb-6">
+              Secure agreements that release funds incrementally as project milestones are achieved.
+            </p>
+             <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
+              Learn More
+            </a>
+          </div>
+          {/* Card 3 */}
+          <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
+            <div className="text-5xl mb-4">✨</div>
+            <h3 className="text-2xl font-bold mb-2">Transparent & Trustless</h3>
+            <p className="text-muted-foreground mb-6">
+              All terms and payouts are on-chain, providing clarity and reducing disputes.
+            </p>
+             <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
+              Learn More
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Horizontal Info Banner */}
+      <section className="py-5 bg-background">
+        <div className="container mx-auto px-6">
+          <div className="bg-primary text-primary-foreground rounded-2xl p-12">
+            <h2 className="text-4xl font-bold mb-12 text-center">Your Work, Secured. Your Payouts, Simplified.</h2>
+            <div className="grid md:grid-cols-3 gap-12 text-left">
+              <div>
+                <h4 className="text-xl font-bold mb-4 border-b-2 border-secondary pb-2">For Funders</h4>
+                <ul className="space-y-2 text-primary-foreground/80">
+                  <li>› Easy setup & funding</li>
+                  <li>› Track progress</li>
+                  <li>› Efficient distribution</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xl font-bold mb-4 border-b-2 border-secondary pb-2">For Creators</h4>
+                <ul className="space-y-2 text-primary-foreground/80">
+                  <li>› Clear terms & milestones</li>
+                  <li>› Guaranteed payouts</li>
+                  <li>› Focus on your craft</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xl font-bold mb-4 border-b-2 border-secondary pb-2">Core Technology</h4>
+                <ul className="space-y-2 text-primary-foreground/80">
+                  <li>› Filecoin Storage (IPFS)</li>
+                  <li>› FVM & EVM Compatible</li>
+                  <li>› USDC Stablecoins</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-24 bg-background">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold mb-6">Join the Future of Decentralized Work.</h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">
+            Create your first pact, explore active agreements, and experience a fairer way to manage payments.
+          </p>
+          <Link
+            href="/dashboard/active"
+            className="inline-block bg-accent text-accent-foreground font-bold py-4 px-10 rounded-lg text-xl hover:bg-opacity-90 transition-colors"
+          >
+            Explore All Pacts
           </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vaults.map((vault) => (
-            <VaultCard key={vault.id} vault={vault} />
-          ))}
-        </div>
-      )}
-    </div>
+      </section>
+    </main>
   );
 }

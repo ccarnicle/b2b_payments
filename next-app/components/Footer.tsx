@@ -1,9 +1,9 @@
 export default function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-secondary">
+    <footer className="bg-card">
       <div className="container mx-auto px-4 py-4 text-center text-sm text-foreground/60">
-        <p>© {year} Escrow Prize Pool. A v0.1 Hackathon Project.</p>
+        <p>© {year} Smart Vaults. A PL_Genesis Hackathon Project.</p>
       </div>
     </footer>
   );

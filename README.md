@@ -41,11 +41,16 @@ b2b_payments/
 └── next-app/
     ├── app/
     │   ├── api/
-    │   │   └── generate-upload-url/
+    │   │   └── upload/
     │   │       └── route.ts         # Secure API route for Pinata signed URLs
-    │   ├── create/
-    │   ├── vault/
-    │   │   └── [id]/
+    │   ├── dashboard/
+    │   │   ├── active/
+    │   │   │   └── page.tsx         # Active pacts dashboard
+    │   │   ├── create/
+    │   │   │   └── page.tsx         # Create new pact
+    │   │   └── pact/
+    │   │       └── [id]/
+    │   │           └── page.tsx     # Pact detail page
     │   └── page.tsx                 # Homepage
     ├── components/
     │   └── CreateVaultForm.tsx     # Component with IPFS upload logic
