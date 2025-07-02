@@ -65,11 +65,12 @@ The core functionality of the application is complete and has been tested end-to
 - **Dual Pact System:** The smart contract supports two distinct use cases: **1-to-many Prize Pools** for hackathons and **1-to-1 Milestone grants** for freelance work.
 - **End-to-End Flow:** Users can successfully create a pact, fund it, have the terms stored on IPFS, view all pacts on a homepage, see detailed information on a dedicated page, and distribute funds as the funder.
 - **Polished Frontend Foundation:** The application features a custom color palette, typography, and robust state management for all user interactions.
+- **New! Dashboard & Authentication:** The application has been refactored into a secure dashboard layout. All sensitive pages now require wallet authentication and enforce connection to the correct blockchain network (Filecoin Calibration).
 
 ## 🚀 Hackathon Roadmap
 
 ### **Next Up: Phase 3 (Days 7-8) - Polish & Expansion**
-- [ ] **UI Overhaul:** Refactor the application into a dashboard layout with a dedicated landing page.
+- [x] **UI Overhaul:** Refactor the application into a dashboard layout with a dedicated landing page.
 - [ ] **Flow EVM Deployment:** Deploy the `VaultFactory` contract to the Flow EVM Testnet.
 - [ ] **Multi-Chain Integration:** Implement a network context and UI switcher to allow users to toggle between Filecoin and Flow networks.
 

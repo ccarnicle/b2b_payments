@@ -5,77 +5,114 @@ import { useEffect, useState } from 'react';
 import { useWeb3 } from '@/lib/contexts/Web3Context';
 import { VaultCard } from '@/components/VaultCard';
 import Link from 'next/link';
-import { type EventLog } from 'ethers';
 
-// Define an updated type for our vault data, reflecting the contract's 'finalized' status
-interface Vault {
-  id: string;
-  funder: string;
-  beneficiary: string;
-  vaultType: number;
-  totalAmount: string;
-  finalized: boolean; // Directly corresponds to the contract's 'finalized' state
-  // Add other fields from your contract's Vault struct if you plan to use them here later
-  // such as releaseTime, milestonePayouts, etc.
+// Define the interface that directly mirrors the Solidity 'Vault' struct
+// as returned by ethers.js from getVaultDetails
+interface ContractVaultDetails {
+  funder: string; // address
+  beneficiary: string; // address
+  token: string; // address of the IERC20 token
+  vaultType: number; // 0 for PrizePool, 1 for Milestone
+  totalAmount: bigint; // uint256
+  amountWithdrawn: bigint; // uint256
+  termsCID: string; // string
+  finalized: boolean; // bool
+  releaseTime: bigint; // uint256 (PrizePool specific)
+  milestonePayouts: bigint[]; // uint256[] (Milestone specific)
+  milestonesPaid: boolean[]; // bool[] (Milestone specific)
+  nextMilestoneToPay: bigint; // uint256 (Milestone specific)
+}
+
+// Type for the array response from the contract
+type ContractVaultDetailsArray = [
+  string, // funder
+  string, // beneficiary
+  string, // token
+  bigint, // vaultType
+  bigint, // totalAmount
+  bigint, // amountWithdrawn
+  string, // termsCID
+  boolean, // finalized
+  bigint, // releaseTime
+  bigint[], // milestonePayouts
+  boolean[], // milestonesPaid
+  bigint // nextMilestoneToPay
+];
+
+// Our unified Vault interface for the frontend components, adding the client-side 'id'
+interface Vault extends ContractVaultDetails {
+  id: string; // The vault ID (BigInt from contract, converted to string for keying)
 }
 
 export default function CompletedPactsPage() {
-  const { vaultFactoryContract, provider } = useWeb3();
+  const { vaultFactoryContract, account } = useWeb3();
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCompletedVaults = async () => {
-      if (!vaultFactoryContract || !provider) return;
+      if (!vaultFactoryContract || !account) {
+        setIsLoading(false);
+        return;
+      }
 
       setIsLoading(true);
       try {
-        const currentBlock = await provider.getBlockNumber();
-        const chunkRange = 1800; // Safe query range for Filecoin Calibration
-        const totalLookbackRange = 100000; // How far back to search
+        // Fetch vault IDs where the user is a funder or beneficiary
+        const fundedVaultIds: bigint[] = await vaultFactoryContract.getVaultIdsFundedByUser(account);
+        const beneficiaryVaultIds: bigint[] = await vaultFactoryContract.getVaultIdsAsBeneficiary(account);
 
-        const filter = vaultFactoryContract.filters.VaultCreated();
-        const collectedLogs: EventLog[] = [];
+        // Combine and deduplicate IDs using a Set
+        const allVaultIds = [...fundedVaultIds, ...beneficiaryVaultIds];
+        const uniqueVaultIds = Array.from(new Set(allVaultIds.map(id => id.toString()))).map(id => BigInt(id));
 
-        for (let i = currentBlock; i > currentBlock - totalLookbackRange; i -= chunkRange) {
-          const fromBlock = Math.max(0, i - chunkRange + 1);
-          const toBlock = i;
-          
-          try {
-            const logs = await vaultFactoryContract.queryFilter(filter, fromBlock, toBlock);
-            collectedLogs.push(...(logs as EventLog[]));
-          } catch (error) {
-              console.warn(`Could not fetch logs for range ${fromBlock}-${toBlock}.`, error);
-          }
-        }
-        
-        // Map the event logs to a basic format first
-        const fetchedVaultsFromLogs: Vault[] = collectedLogs
-          .filter((log): log is EventLog => 'args' in log)
-          .map(log => ({
-            id: log.args.vaultId.toString(),
-            funder: log.args.funder,
-            beneficiary: log.args.beneficiary,
-            vaultType: Number(log.args.vaultType),       
-            totalAmount: log.args.totalAmount.toString(),
-            finalized: false, // Default to false, will be updated by getVaultDetails
-          }));
-        
-        // Now, fetch the 'finalized' status for each vault by calling getVaultDetails
-        const vaultsWithStatus = await Promise.all(
-          fetchedVaultsFromLogs.map(async (vault) => {
-            try {
-              const contractVaultDetails = await vaultFactoryContract.getVaultDetails(vault.id);
-              return { ...vault, finalized: contractVaultDetails.finalized };
-            } catch (detailError) {
-              console.error(`Failed to get details for vault ${vault.id}:`, detailError);
-              return vault; // Return vault as is if detail fetch fails
-            }
+        // Fetch details for each unique vault
+        const vaultDetailsPromises = uniqueVaultIds.map(id =>
+          vaultFactoryContract.getVaultDetails(id).then((details: ContractVaultDetailsArray) => {
+            // Contract returns an array, so we need to destructure it properly
+            const [
+              funder,
+              beneficiary, 
+              token,
+              vaultType,
+              totalAmount,
+              amountWithdrawn,
+              termsCID,
+              finalized,
+              releaseTime,
+              milestonePayouts,
+              milestonesPaid,
+              nextMilestoneToPay
+            ] = details;
+            
+            return {
+              funder,
+              beneficiary,
+              token,
+              vaultType: Number(vaultType),
+              totalAmount,
+              amountWithdrawn,
+              termsCID,
+              finalized,
+              releaseTime,
+              milestonePayouts,
+              milestonesPaid,
+              nextMilestoneToPay,
+              id: id.toString(), // Add the vault ID to the object
+            };
+          }).catch(error => {
+            console.error(`Failed to fetch details for vault ${id}:`, error);
+            return null;
           })
         );
         
+        const allVaultDetails: (Vault | null)[] = await Promise.all(vaultDetailsPromises);
+        
+        // Filter out null values and then filter for completed vaults
+        const validVaultDetails = allVaultDetails.filter((vault): vault is Vault => vault !== null);
+
         // Filter for completed (finalized) vaults
-        const completedVaults = vaultsWithStatus.filter(vault => vault.finalized); 
+        const completedVaults = validVaultDetails.filter(vault => vault.finalized); 
         
         // Reverse the array to show the newest completed vaults first
         setVaults(completedVaults.reverse());
@@ -88,19 +125,19 @@ export default function CompletedPactsPage() {
     };
 
     fetchCompletedVaults();
-  }, [vaultFactoryContract, provider]); // Rerun when the contract is available
+  }, [vaultFactoryContract, account]); // Rerun when the contract or account changes
 
   return (
     <>
-      <div className="text-center my-8">
-        <h1 className="text-4xl font-bold font-display">Completed Smart Pacts</h1>
-        <p className="mt-2 text-lg text-muted-foreground">
-          A record of all successfully completed and paid-out agreements.
+      <div className="text-center my-6 md:my-8">
+        <h1 className="text-2xl md:text-4xl font-bold font-display">Completed Smart Pacts</h1>
+        <p className="mt-2 text-sm md:text-lg text-muted-foreground">
+          A record of all your successfully completed and paid-out agreements.
         </p>
       </div>
 
       {isLoading ? (
-        <p className="text-center">Loading completed pacts from the blockchain...</p>
+        <p className="text-center">Loading your completed pacts from the blockchain...</p>
       ) : vaults.length === 0 ? (
         <div className="text-center p-8 bg-background rounded-lg border border-muted">
           <p className="mb-4">No completed pacts found yet.</p>
@@ -109,7 +146,7 @@ export default function CompletedPactsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
           {vaults.map((vault) => (
             <VaultCard key={vault.id} vault={vault} />
           ))}

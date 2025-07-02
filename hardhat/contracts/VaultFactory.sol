@@ -36,6 +36,11 @@ contract VaultFactory is ReentrancyGuard {
     // --- State Variables ---
     Vault[] public vaults;
 
+    // Mappings to track vaults by funder and beneficiary
+    mapping(address => uint256[]) public funderVaultIds;
+    mapping(address => uint256[]) public beneficiaryVaultIds;
+
+
     // --- Events ---
     event VaultCreated(
         uint256 indexed vaultId,
@@ -60,7 +65,6 @@ contract VaultFactory is ReentrancyGuard {
     error IncorrectTotalPayout();
 
     // --- Use Case 1: Prize Pool Creation ---
-    // Renamed from createTimeLockedVault and removed the beneficiary parameter.
     function createPrizePoolVault(
         address _token,
         uint256 _amount,
@@ -82,10 +86,14 @@ contract VaultFactory is ReentrancyGuard {
         newVault.termsCID = _termsCID;
 
         newVault.token.transferFrom(msg.sender, address(this), _amount);
+        
+        // NEW: Track vault for the funder
+        funderVaultIds[msg.sender].push(vaultId);
+
         emit VaultCreated(vaultId, msg.sender, address(0), VaultType.PrizePool, _amount);
     }
 
-    // --- Use Case 2: Milestone Grant Creation (Unchanged) ---
+    // --- Use Case 2: Milestone Grant Creation  ---
     function createMilestoneVault(
         address _beneficiary,
         address _token,
@@ -113,6 +121,11 @@ contract VaultFactory is ReentrancyGuard {
         newVault.milestonesPaid = new bool[](_milestonePayouts.length);
 
         newVault.token.transferFrom(msg.sender, address(this), totalDeposit);
+
+        // NEW: Track vault for both funder and beneficiary
+        funderVaultIds[msg.sender].push(vaultId);
+        beneficiaryVaultIds[_beneficiary].push(vaultId);
+
         emit VaultCreated(vaultId, msg.sender, _beneficiary, VaultType.Milestone, totalDeposit);
     }
 
@@ -177,9 +190,19 @@ contract VaultFactory is ReentrancyGuard {
         }
     }
 
-    // --- Getter Function (Unchanged) ---
+    // --- Getter Functions ---
     function getVaultDetails(uint256 _vaultId) public view returns (Vault memory) {
         if (_vaultId >= vaults.length) revert InvalidVaultId();
         return vaults[_vaultId];
+    }
+
+    // NEW: Getter function for vaults where a user is the funder
+    function getVaultIdsFundedByUser(address _funder) public view returns (uint256[] memory) {
+        return funderVaultIds[_funder];
+    }
+
+    // NEW: Getter function for vaults where a user is the beneficiary
+    function getVaultIdsAsBeneficiary(address _beneficiary) public view returns (uint256[] memory) {
+        return beneficiaryVaultIds[_beneficiary];
     }
 }

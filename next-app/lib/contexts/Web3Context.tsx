@@ -15,25 +15,28 @@ interface Web3ContextType {
   account: string | null;
   login: () => void;
   logout: () => void;
-  ready: boolean;
+  isReady: boolean;
   authenticated: boolean;
+  chainId: string | null;
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null);
 
 export function Web3Provider({ children }: { children: ReactNode }) {
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready: isReady, authenticated, user, login, logout } = usePrivy();
   const { wallets } = useWallets();
 
   const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [signer, setSigner] = useState<Signer | null>(null);
   const [vaultFactoryContract, setVaultFactoryContract] = useState<ethers.Contract | null>(null); // Renamed state
+  const [chainId, setChainId] = useState<string | null>(null);
 
   useEffect(() => {
     const setupEthers = async () => {
       // Ensure we have a connected wallet
-      if (ready && authenticated && wallets.length > 0) {
+      if (isReady && authenticated && wallets.length > 0) {
         const wallet = wallets[0];
+        setChainId(wallet.chainId);
         const eip1193provider = await wallet.getEthereumProvider();
         const ethersProvider = new ethers.BrowserProvider(eip1193provider);
         const ethersSigner = await ethersProvider.getSigner();
@@ -51,11 +54,12 @@ export function Web3Provider({ children }: { children: ReactNode }) {
         setProvider(null);
         setSigner(null);
         setVaultFactoryContract(null);
+        setChainId(null);
       }
     };
 
     setupEthers();
-  }, [ready, authenticated, wallets]);
+  }, [isReady, authenticated, wallets]);
 
   const account = user?.wallet?.address || null;
 
@@ -66,8 +70,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     account,
     login,
     logout,
-    ready,
+    isReady,
     authenticated,
+    chainId,
   };
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;

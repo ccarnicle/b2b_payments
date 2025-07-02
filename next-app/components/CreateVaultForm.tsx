@@ -22,8 +22,16 @@ export default function CreateVaultForm() {
     const [beneficiary, setBeneficiary] = useState("");
     const [tokenAddress, setTokenAddress] = useState("0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0"); // Pre-filled USDFC Testnet address
     const [terms, setTerms] = useState("");
-    const [releaseDate, setReleaseDate] = useState("");
-    const [releaseTime, setReleaseTime] = useState("");
+    const [releaseDate, setReleaseDate] = useState(() => {
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        return oneWeekFromNow.toISOString().split('T')[0];
+    });
+    const [releaseTime, setReleaseTime] = useState(() => {
+        const oneWeekFromNow = new Date();
+        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+        return oneWeekFromNow.toTimeString().slice(0, 5); // HH:MM format
+    });
     const [totalAmount, setTotalAmount] = useState("");
     const [milestoneAmounts, setMilestoneAmounts] = useState("");
 

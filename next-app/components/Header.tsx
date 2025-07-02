@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useWeb3 } from "@/lib/contexts/Web3Context"; // <-- IMPORT our hook
 
 // A good practice is to define a component for the logo
@@ -18,6 +19,9 @@ const Logo = () => (
 
 export default function Header() {
   const { login, logout, account, authenticated } = useWeb3(); // <-- USE our hook
+  const pathname = usePathname();
+  
+  const isOnDashboard = pathname.startsWith('/dashboard');
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -28,10 +32,12 @@ export default function Header() {
       <div className="container mx-auto px-4 py-1 flex justify-between items-center">
         <Logo />
         <nav className="flex items-center space-x-4">
-          <Link href="/dashboard/create" className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium">
-            Create Pool
+          <Link 
+            href={isOnDashboard ? "/" : "/dashboard/create"} 
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium"
+          >
+            {isOnDashboard ? "Home" : "Launch App"}
           </Link>
-          
           {authenticated && account ? (
             <div className="flex items-center space-x-2">
               <div className="bg-secondary px-4 py-2 rounded-md text-sm font-mono">

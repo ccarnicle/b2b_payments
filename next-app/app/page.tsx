@@ -62,9 +62,6 @@ export default function LandingPage() {
             <p className="text-muted-foreground mb-6">
               Easily fund hackathons, bounties, and community initiatives with multi-recipient payouts.
             </p>
-            <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
-              Learn More
-            </a>
           </div>
           {/* Card 2 */}
           <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
@@ -73,9 +70,6 @@ export default function LandingPage() {
             <p className="text-muted-foreground mb-6">
               Secure agreements that release funds incrementally as project milestones are achieved.
             </p>
-             <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
-              Learn More
-            </a>
           </div>
           {/* Card 3 */}
           <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
@@ -84,9 +78,6 @@ export default function LandingPage() {
             <p className="text-muted-foreground mb-6">
               All terms and payouts are on-chain, providing clarity and reducing disputes.
             </p>
-             <a href="#" className="font-bold text-primary border border-primary py-2 px-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
-              Learn More
-            </a>
           </div>
         </div>
       </section>

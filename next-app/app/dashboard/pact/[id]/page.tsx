@@ -163,6 +163,20 @@ export default function VaultDetailPage() {
           <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} USDFC`} />
           {/* Show Prize Pool as the type */}
           <DetailItem label="Vault Type" value={isPrizePool ? "Prize Pool" : "Milestone-Based"} />
+          {/* Show unlock time for Prize Pool vaults */}
+          {isPrizePool && details.releaseTime && (
+            <DetailItem 
+              label="Unlock Time" 
+              value={
+                <div className="text-right">
+                  <div>{new Date(details.releaseTime * 1000).toLocaleString()}</div>
+                  <div className={`text-xs mt-1 ${details.releaseTime * 1000 <= Date.now() ? 'text-green-600' : 'text-orange-600'}`}>
+                    {details.releaseTime * 1000 <= Date.now() ? '✅ Unlocked' : '🔒 Locked'}
+                  </div>
+                </div>
+              } 
+            />
+          )}
           <DetailItem label="Token Contract" value={details.token} />
         </dl>
       </div>

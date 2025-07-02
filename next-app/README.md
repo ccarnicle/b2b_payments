@@ -14,18 +14,19 @@ This package contains the Next.js frontend for the **Smart Pacts** project.
 
 The frontend is feature-complete for the MVP. The entire user journey—from creating a pact to distributing funds—is fully implemented and tested on the Filecoin Calibration testnet.
 
-- **Pact Creation:** A unified form at `/create` allows users to create and fund both **Prize Pool** and **Milestone** pacts, including the secure upload of terms to IPFS.
+- **Pact Creation:** A unified form at `/dashboard/create` allows users to create and fund both **Prize Pool** and **Milestone** pacts, including the secure upload of terms to IPFS.
 - **Pact Browsing:** The homepage (`/`) displays all created pacts by fetching on-chain event data.
-- **Pact Detailing:** The dynamic detail page (`/vault/[id]`) shows comprehensive on-chain data and the full agreement terms from IPFS.
+- **Pact Detailing:** The dynamic detail page (`/dashboard/pact/[id]`) shows comprehensive on-chain data and the full agreement terms from IPFS.
 - **Fund Distribution:** The UI provides conditional actions, allowing funders to release milestone payments or distribute prize pool funds to multiple recipients after the time lock has expired.
+- **New! Dashboard Layout:** The application has been migrated to a robust dashboard structure. A persistent sidebar provides clear navigation, and a global layout enforces user authentication and network correctness (Filecoin Calibration) before rendering any sensitive content.
 
 ## 📈 Next Steps: Polish & Multi-Chain Support
 
 The next phase is focused on refining the user experience and expanding the project's reach.
 
-- [ ] **UI/Layout Refactor:** Re-architect the UI into a dashboard layout with a dedicated sidebar for navigation.
-- [ ] **Create New App Pages:** Build out pages for `/app/active`, `/app/completed`, and a placeholder for `/app/invoicing`.
-- [ ] **Multi-Chain Context:** Implement a network context to manage chain-specific details (RPC URLs, contract addresses).
+- [x] **UI/Layout Refactor:** Re-architect the UI into a dashboard layout with a dedicated sidebar for navigation.
+- [x] **Create New App Pages:** Build out pages for `/dashboard/active`, `/dashboard/completed`, and a placeholder for `/dashboard/invoices`.
+- [In-Progress] **Multi-Chain Context:** Implement a network context to manage chain-specific details (RPC URLs, contract addresses). A `Web3Context` has been established as the foundation.
 - [ ] **Flow EVM Integration:** Deploy the contract to the Flow EVM testnet and add it to the network context, enabling a network switcher in the UI.
 
 ### 🎨 Branding & Color Palette

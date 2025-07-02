@@ -179,4 +179,60 @@ describe("VaultFactory", function () {
         // Other release failure tests remain the same...
     });
   });
+
+  // NEW: Test suite for user vault mappings
+  describe("User Vault Mappings", function () {
+    it("Should track vault IDs for the funder", async function () {
+      const { vaultFactory, mockToken, funder, beneficiary } = await loadFixture(deployVaultFactoryFixture);
+      const tokenAddress = await mockToken.getAddress();
+      const amount1 = ethers.parseUnits("1000", 18);
+      const amount2 = ethers.parseUnits("2000", 18);
+      const milestonePayouts = [ethers.parseUnits("50", 18)];
+      const releaseTime = (await time.latest()) + 3600;
+
+      // Funder creates a Prize Pool vault (vaultId 0)
+      await mockToken.connect(funder).approve(vaultFactory.target, amount1);
+      await vaultFactory.connect(funder).createPrizePoolVault(tokenAddress, amount1, releaseTime, "cid1");
+
+      // Funder creates a Milestone vault (vaultId 1)
+      await mockToken.connect(funder).approve(vaultFactory.target, amount2); // Approve for milestone total
+      await vaultFactory.connect(funder).createMilestoneVault(beneficiary.address, tokenAddress, milestonePayouts, "cid2");
+
+      // Check funderVaultIds for funder
+      const funderVaults = await vaultFactory.getVaultIdsFundedByUser(funder.address);
+      expect(funderVaults).to.deep.equal([0n, 1n]); // Use 0n, 1n for BigInt comparison
+    });
+
+    it("Should track vault IDs for the beneficiary", async function () {
+      const { vaultFactory, mockToken, funder, beneficiary, recipient1 } = await loadFixture(deployVaultFactoryFixture);
+      const tokenAddress = await mockToken.getAddress();
+      const milestonePayouts1 = [ethers.parseUnits("50", 18)];
+      const milestonePayouts2 = [ethers.parseUnits("100", 18)];
+
+      // Funder creates a Milestone vault for beneficiary (vaultId 0)
+      await mockToken.connect(funder).approve(vaultFactory.target, milestonePayouts1[0]);
+      await vaultFactory.connect(funder).createMilestoneVault(beneficiary.address, tokenAddress, milestonePayouts1, "cid1");
+
+      // Funder creates another Milestone vault for recipient1 (vaultId 1)
+      await mockToken.connect(funder).approve(vaultFactory.target, milestonePayouts2[0]);
+      await vaultFactory.connect(funder).createMilestoneVault(recipient1.address, tokenAddress, milestonePayouts2, "cid2");
+
+      // Check beneficiaryVaultIds for beneficiary
+      const beneficiaryVaults = await vaultFactory.getVaultIdsAsBeneficiary(beneficiary.address);
+      expect(beneficiaryVaults).to.deep.equal([0n]); // Only vault 0 should be associated with beneficiary
+
+      // Check beneficiaryVaultIds for recipient1
+      const recipient1Vaults = await vaultFactory.getVaultIdsAsBeneficiary(recipient1.address);
+      expect(recipient1Vaults).to.deep.equal([1n]); // Only vault 1 should be associated with recipient1
+    });
+
+    it("Should return an empty array if no vaults are associated with the user", async function () {
+      const { vaultFactory, recipient1 } = await loadFixture(deployVaultFactoryFixture);
+      const noVaultsFunder = await vaultFactory.getVaultIdsFundedByUser(recipient1.address);
+      const noVaultsBeneficiary = await vaultFactory.getVaultIdsAsBeneficiary(recipient1.address);
+      
+      expect(noVaultsFunder).to.deep.equal([]);
+      expect(noVaultsBeneficiary).to.deep.equal([]);
+    });
+  });
 });

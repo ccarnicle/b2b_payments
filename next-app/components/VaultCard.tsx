@@ -7,7 +7,7 @@ interface Vault {
     funder: string;
     beneficiary: string;
     vaultType: number; // This will now correctly be a number
-    totalAmount: string;
+    totalAmount: bigint | string;
 }
 
 const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -16,20 +16,20 @@ export function VaultCard({ vault }: { vault: Vault }) {
     // --- UPDATED LOGIC ---
     const isPrizePool = vault.vaultType === 0;
     const vaultTypeString = isPrizePool ? "Prize Pool" : "Milestone";
-    const formattedAmount = ethers.formatUnits(vault.totalAmount, 6);
+    const formattedAmount = vault.totalAmount ? ethers.formatUnits(vault.totalAmount, 6) : "0";
 
     return (
-        <div className="bg-card p-6 rounded-lg border border-muted flex flex-col justify-between shadow-md hover:shadow-lg transition-shadow">
+        <div className="bg-card p-5 md:p-6 lg:p-7 rounded-lg border border-muted flex flex-col justify-between shadow-md hover:shadow-lg transition-shadow min-h-[220px] md:min-h-[240px] max-w-md mx-auto w-full">
             <div>
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-display text-xl font-bold">Pact #{vault.id}</h3>
+                <div className="flex justify-between items-start mb-4">
+                    <h3 className="font-display text-xl md:text-2xl font-bold">Pact #{vault.id}</h3>
                     {/* UPDATED: Simplified the class name logic */}
-                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${isPrizePool ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/20 text-primary-foreground'}`}>
+                    <span className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full whitespace-nowrap ${isPrizePool ? 'bg-secondary/20 text-secondary-foreground' : 'bg-primary/20 text-primary-foreground'}`}>
                         {vaultTypeString}
                     </span>
                 </div>
-                <p className="text-4xl font-bold my-4">{formattedAmount} <span className="text-2xl text-muted-foreground">USDFC</span></p>
-                <div className="space-y-2 text-sm text-muted-foreground">
+                <p className="text-3xl md:text-4xl lg:text-5xl font-bold my-4 md:my-5">{formattedAmount} <span className="text-xl md:text-2xl lg:text-3xl text-muted-foreground">USDFC</span></p>
+                <div className="space-y-2 text-sm md:text-base text-muted-foreground">
                     <p><strong>Funder:</strong> {formatAddress(vault.funder)}</p>
                     {/* Logic for beneficiary is already correct, showing only for non-prize-pools */}
                     {!isPrizePool && vault.beneficiary !== ethers.ZeroAddress && (
@@ -37,7 +37,7 @@ export function VaultCard({ vault }: { vault: Vault }) {
                     )}
                 </div>
             </div>
-            <Link href={`/dashboard/pact/${vault.id}`} className="mt-6 block text-center w-full bg-primary text-primary-foreground font-bold py-2 rounded-md hover:bg-primary/90">
+            <Link href={`/dashboard/pact/${vault.id}`} className="mt-5 md:mt-6 block text-center w-full bg-accent text-accent-foreground font-bold py-3 md:py-4 text-base md:text-lg rounded-md hover:bg-accent/90 transition-colors">
                 View Details
             </Link>
         </div>
