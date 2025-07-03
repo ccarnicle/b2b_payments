@@ -22,17 +22,15 @@ export function DistributePrizePoolForm({ vaultId, totalAmount, tokenSymbol, onD
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!vaultFactoryContract) {
-            setError("Wallet not connected or contract not initialized.");
-            return;
-        }
+        if (!vaultFactoryContract || !activeChainConfig) return;
+
         setIsLoading(true);
         setError('');
         setStatus('Preparing distribution transaction...');
 
         try {
             const recipientsArray = recipients.split(',').map(r => r.trim());
-            const amountsArray = amounts.split(',').map(a => ethers.parseUnits(a.trim(), activeChainConfig?.usdcToken.decimals || 18));
+            const amountsArray = amounts.split(',').map(a => ethers.parseUnits(a.trim(), activeChainConfig?.primaryCoin.decimals || 18));
 
             const tx = await vaultFactoryContract.distributePrizePool(vaultId, recipientsArray, amountsArray);
             setStatus('Submitting distribution to the blockchain...');

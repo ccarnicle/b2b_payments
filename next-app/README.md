@@ -30,6 +30,9 @@ With the core multi-chain functionality complete, the next steps are focused on 
 - [x] **Multi-Chain Integration:** Implemented a robust `Web3Context` to manage chain-specific details (RPC URLs, contract addresses, token info) and integrated it across the entire application. The UI now fully supports both Filecoin Calibration and Flow EVM testnets.
 - [ ] **Finalize Documentation & Record Demo:** Prepare all written materials and record the final demo video.
 
+### 🔮 Future Enhancements
+-   **Multi-Token Support:** Evolve the `Web3Context` to support creating pacts with multiple ERC20 tokens on a single network. This would involve changing the `primaryCoin` configuration to a `supportedTokens` dictionary and adding a token selector dropdown to the creation form, allowing users to choose from a list of supported tokens (e.g., USDFC, DAI, etc.) for their pact.
+
 ### 🎨 Branding & Color Palette
 The application uses a modern, clean **light theme**. The color system is built into `globals.css` using CSS variables and is fully integrated with Tailwind CSS.
 

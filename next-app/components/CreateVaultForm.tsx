@@ -55,7 +55,7 @@ export default function CreateVaultForm() {
 
     useEffect(() => {
         if (activeChainConfig) {
-            setTokenAddress(activeChainConfig.usdcToken.address);
+            setTokenAddress(activeChainConfig.primaryCoin.address);
             setIsApproved(false); // Reset approval when network changes
         }
     }, [activeChainConfig]);
@@ -63,7 +63,7 @@ export default function CreateVaultForm() {
     const amountToApprove = useMemo(() => {
         if (!activeChainConfig) return 0n;
         try {
-            const decimals = activeChainConfig.usdcToken.decimals;
+            const decimals = activeChainConfig.primaryCoin.decimals;
             if (vaultType === 'PrizePool') {
                 return ethers.parseUnits(totalAmount || '0', decimals);
             } else {
@@ -76,7 +76,7 @@ export default function CreateVaultForm() {
     const needsApproval = amountToApprove > 0n;
 
     const handleApprove = async () => {
-        if (!signer || !tokenAddress || !activeChainConfig?.vaultFactoryAddress) {
+        if (!signer || !tokenAddress || !activeChainConfig?.contractAddress) {
             setError("Cannot approve: Wallet not connected or network configuration is missing.");
             return;
         }
@@ -85,7 +85,7 @@ export default function CreateVaultForm() {
         setIsApproving(true);
         try {
             const tokenContract = new ethers.Contract(tokenAddress, Erc20Abi, signer);
-            const tx = await tokenContract.approve(activeChainConfig.vaultFactoryAddress, amountToApprove);
+            const tx = await tokenContract.approve(activeChainConfig.contractAddress, amountToApprove);
             setStatusMessage("Approval transaction sent... waiting for confirmation.");
             await tx.wait();
             setIsApproved(true);
@@ -135,7 +135,7 @@ export default function CreateVaultForm() {
                     setIsCreating(false);
                     return;
                 }
-                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), activeChainConfig.usdcToken.decimals));
+                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), activeChainConfig.primaryCoin.decimals));
                 setStatusMessage("Sending transaction to create Milestone Vault...");
                 tx = await vaultFactoryContract.createMilestoneVault(beneficiary, tokenAddress, payouts, termsCID);
             }
@@ -177,7 +177,7 @@ export default function CreateVaultForm() {
 
             <div className="space-y-2">
                 <label htmlFor="tokenAddress" className={labelStyles}>
-                    Token Address ({activeChainConfig?.usdcToken.symbol || '...'})
+                    Token Address ({activeChainConfig?.primaryCoin.symbol || '...'})
                 </label>
                 <input id="tokenAddress" type="text" value={tokenAddress} readOnly className={`${inputStyles} bg-muted/50`} placeholder="Auto-filled by network..." />
             </div>

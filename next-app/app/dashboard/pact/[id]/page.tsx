@@ -58,7 +58,7 @@ export default function VaultDetailPage() {
         if(response.ok) termsData = await response.json();
       }
       
-      const tokenDecimals = activeChainConfig.usdcToken.decimals;
+      const tokenDecimals = activeChainConfig.primaryCoin.decimals;
       
       setDetails({
         funder: data.funder,
@@ -135,7 +135,7 @@ export default function VaultDetailPage() {
           <DistributePrizePoolForm 
               vaultId={vaultId}
               totalAmount={details.totalAmount}
-              tokenSymbol={activeChainConfig?.usdcToken.symbol || ''}
+              tokenSymbol={activeChainConfig?.primaryCoin.symbol || ''}
               onDistributeSuccess={fetchVaultDetails}
           />
       )}
@@ -163,8 +163,8 @@ export default function VaultDetailPage() {
           <DetailItem label="Funder" value={details.funder} />
           {/* Only show beneficiary for Milestone vaults */}
           {isMilestone && <DetailItem label="Beneficiary" value={details.beneficiary} />}
-          <DetailItem label="Total Value" value={`${details.totalAmount} ${activeChainConfig?.usdcToken.symbol || ''}`} />
-          <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} ${activeChainConfig?.usdcToken.symbol || ''}`} />
+          <DetailItem label="Total Value" value={`${details.totalAmount} ${activeChainConfig?.primaryCoin.symbol || ''}`} />
+          <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} ${activeChainConfig?.primaryCoin.symbol || ''}`} />
           {/* Show Prize Pool as the type */}
           <DetailItem label="Vault Type" value={isPrizePool ? "Prize Pool" : "Milestone-Based"} />
           {/* Show unlock time for Prize Pool vaults */}
@@ -202,7 +202,7 @@ export default function VaultDetailPage() {
                  <ul className="space-y-2">
                     {details.milestonePayouts?.map((payout, index) => (
                         <li key={index} className={`flex justify-between p-2 rounded-md ${details.milestonesPaid![index] ? 'bg-green-500/20' : 'bg-background'}`}>
-                            <span>Milestone {index + 1}: {payout} ${activeChainConfig?.usdcToken.symbol || ''}</span>
+                            <span>Milestone {index + 1}: {payout} ${activeChainConfig?.primaryCoin.symbol || ''}</span>
                             <span>{details.milestonesPaid![index] ? '✅ Paid' : '⏳ Pending'}</span>
                         </li>
                     ))}

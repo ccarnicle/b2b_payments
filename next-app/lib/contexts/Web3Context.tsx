@@ -11,62 +11,57 @@ import { VAULT_FACTORY_ABI } from '@/lib/contracts';
 interface ChainConfig {
   chainId: string; // Chain ID as a hex string (e.g., "0x1337" for localhost, "0x4e45415f" for Filecoin Calibration)
   name: string;
-  vaultFactoryAddress: string; // The VaultFactory address for this specific chain
-  usdcToken: {
-    address: string;
-    name: string;
-    symbol: string;
-    decimals: number;
-  };
+  contractAddress: string; // The VaultFactory address for this specific chain
   explorerUrl: string; // Base URL for the block explorer
-  logo?: string; // Optional: URL for the network's logo
   nativeCurrency: { // Details about the native currency of the chain
     name: string;
     symbol: string;
     decimals: number;
   };
   rpcUrl: string; // RPC URL for this chain (used for Privy config, not directly by ethers in this context)
+  // NEW: Add primaryCoin/ERC20 token specific to this chain
+  primaryCoin: {
+    address: string;
+    symbol: string;
+    decimals: number;
+  };
 }
 
 // Define all supported blockchain networks and their configurations
 const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     chainId: "0x4cb2f", // Filecoin Calibration Testnet (314159 in decimal)
-    name: "Filecoin Calibration",
-    vaultFactoryAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
-    usdcToken: {
-      address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string,
-      name: 'USD Coin on Filecoin',
-      symbol: 'USDFC',
-      decimals: 6,
-    },
+    name: "Filecoin Calibration Testnet",
+    contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
     explorerUrl: "https://calibration.filfox.info/en",
-    logo: "/filecoin_logo.png",
     nativeCurrency: {
       name: "tFIL",
       symbol: "tFIL",
       decimals: 18,
     },
-    rpcUrl: "https://api.calibration.node.glif.io/rpc/v1", // Example RPC for Privy configuration
+    rpcUrl: "https://api.calibration.node.glif.io/rpc/v1",
+    primaryCoin: { // USDFC details for Filecoin Calibration
+      address: process.env.NEXT_PUBLIC_USDFC_ADDRESS_CALIBRATION as string, // Get this from your .env
+      symbol: "USDFC",
+      decimals: 6, // Assuming USDFC has 6 decimals, common for USDC variants
+    },
   },
   {
     chainId: "0x221", // Flow EVM Testnet (545 in decimal)
     name: "Flow EVM Testnet",
-    vaultFactoryAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_FLOW as string,
-    usdcToken: {
-      address: process.env.NEXT_PUBLIC_FLOW_TOKEN_ADDRESS_FLOW as string,
-      name: 'Flow Token',
-      symbol: 'FLOW',
-      decimals: 18,
-    },
+    contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_FLOW as string,
     explorerUrl: "https://evm-testnet.flowscan.io",
-    logo: "/flow_logo.png",
     nativeCurrency: {
       name: "FLOW",
       symbol: "FLOW",
       decimals: 18,
     },
-    rpcUrl: "https://testnet.evm.nodes.onflow.org", // RPC for Privy configuration
+    rpcUrl: "https://testnet.evm.nodes.onflow.org",
+    primaryCoin: { // WFLOW or other primaryCoin details for Flow EVM
+      address: process.env.NEXT_PUBLIC_WFLOW_ADDRESS_FLOW as string, // Get this from your .env
+      symbol: "WFLOW", // Or USDC/USDT if that's the primaryCoin on Flow EVM you're using
+      decimals: 18, // Assuming WFLOW has 18 decimals
+    },
   },
   // Add other networks here as needed in the future
 ];
@@ -133,7 +128,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
           const ethersSigner = await ethersProvider.getSigner();
           
           // Instantiate the contract using the address from the current chain's config
-          const factoryContract = new ethers.Contract(currentConfig.vaultFactoryAddress, VAULT_FACTORY_ABI, ethersSigner);
+          const factoryContract = new ethers.Contract(currentConfig.contractAddress, VAULT_FACTORY_ABI, ethersSigner);
           setVaultFactoryContract(factoryContract);
           setProvider(ethersProvider);
           setSigner(ethersSigner);
