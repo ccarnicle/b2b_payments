@@ -8,11 +8,12 @@ import { ethers } from 'ethers';
 interface DistributeFormProps {
     vaultId: string;
     totalAmount: string;
+    tokenSymbol: string;
     onDistributeSuccess: () => void;
 }
 
-export function DistributePrizePoolForm({ vaultId, totalAmount, onDistributeSuccess }: DistributeFormProps) {
-    const { vaultFactoryContract } = useWeb3();
+export function DistributePrizePoolForm({ vaultId, totalAmount, tokenSymbol, onDistributeSuccess }: DistributeFormProps) {
+    const { vaultFactoryContract, activeChainConfig } = useWeb3();
     const [recipients, setRecipients] = useState('');
     const [amounts, setAmounts] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +32,7 @@ export function DistributePrizePoolForm({ vaultId, totalAmount, onDistributeSucc
 
         try {
             const recipientsArray = recipients.split(',').map(r => r.trim());
-            const amountsArray = amounts.split(',').map(a => ethers.parseUnits(a.trim(), 6));
+            const amountsArray = amounts.split(',').map(a => ethers.parseUnits(a.trim(), activeChainConfig?.usdcToken.decimals || 18));
 
             const tx = await vaultFactoryContract.distributePrizePool(vaultId, recipientsArray, amountsArray);
             setStatus('Submitting distribution to the blockchain...');
@@ -54,7 +55,7 @@ export function DistributePrizePoolForm({ vaultId, totalAmount, onDistributeSucc
     return (
         <form onSubmit={handleSubmit} className="space-y-4 bg-card p-6 rounded-lg border-muted mt-8">
             <h3 className="font-display text-xl font-bold">Distribute Prize Pool</h3>
-            <p className="text-muted-foreground">Total to Distribute: <span className="font-bold text-foreground">{totalAmount} USDFC</span></p>
+            <p className="text-muted-foreground">Total to Distribute: <span className="font-bold text-foreground">{totalAmount} {tokenSymbol}</span></p>
             <div>
                 <label htmlFor="recipients" className={labelStyles}>Recipient Addresses (comma-separated)</label>
                 <textarea id="recipients" value={recipients} onChange={e => setRecipients(e.target.value)} className={inputStyles} rows={3} placeholder="0x..., 0x..., 0x..."/>

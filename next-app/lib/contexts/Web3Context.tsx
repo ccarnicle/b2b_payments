@@ -19,6 +19,7 @@ interface ChainConfig {
     decimals: number;
   };
   explorerUrl: string; // Base URL for the block explorer
+  logo?: string; // Optional: URL for the network's logo
   nativeCurrency: { // Details about the native currency of the chain
     name: string;
     symbol: string;
@@ -31,7 +32,7 @@ interface ChainConfig {
 const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     chainId: "0x4cb2f", // Filecoin Calibration Testnet (314159 in decimal)
-    name: "Filecoin Calibration Testnet",
+    name: "Filecoin Calibration",
     vaultFactoryAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
     usdcToken: {
       address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string,
@@ -40,6 +41,7 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
       decimals: 6,
     },
     explorerUrl: "https://calibration.filfox.info/en",
+    logo: "/filecoin_logo.png",
     nativeCurrency: {
       name: "tFIL",
       symbol: "tFIL",
@@ -58,6 +60,7 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
       decimals: 18,
     },
     explorerUrl: "https://evm-testnet.flowscan.io",
+    logo: "/flow_logo.png",
     nativeCurrency: {
       name: "FLOW",
       symbol: "FLOW",
@@ -110,7 +113,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       const wallet = wallets[0]; // Assume the first wallet is the active one
       const connectedChainId = wallet.chainId; // A string like "eip155:314159" or just "0x221"
       setCurrentChainId(connectedChainId);
-      
+
       let hexChainId: string;
       if (connectedChainId.includes(':')) {
         const numericChainId = connectedChainId.split(':')[1];

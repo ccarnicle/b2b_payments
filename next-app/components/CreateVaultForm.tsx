@@ -21,16 +21,29 @@ export default function CreateVaultForm() {
     const [beneficiary, setBeneficiary] = useState("");
     const [tokenAddress, setTokenAddress] = useState("");
     const [terms, setTerms] = useState("");
+
+    // A single, consistent date object for initialization.
+    const getInitialFutureDate = () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        return d;
+    };
+
+    // Correctly initialize date and time from the same source.
     const [releaseDate, setReleaseDate] = useState(() => {
-        const oneWeekFromNow = new Date();
-        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-        return oneWeekFromNow.toISOString().split('T')[0];
+        const d = getInitialFutureDate();
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
     });
     const [releaseTime, setReleaseTime] = useState(() => {
-        const oneWeekFromNow = new Date();
-        oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-        return oneWeekFromNow.toTimeString().slice(0, 5); // HH:MM format
+        const d = getInitialFutureDate();
+        const hours = d.getHours().toString().padStart(2, '0');
+        const minutes = d.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
     });
+
     const [totalAmount, setTotalAmount] = useState("");
     const [milestoneAmounts, setMilestoneAmounts] = useState("");
 
@@ -88,7 +101,7 @@ export default function CreateVaultForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!vaultFactoryContract) { 
+        if (!vaultFactoryContract || !activeChainConfig) { 
             setError('Wallet not connected or contract not initialized.');
             return;
         }
@@ -97,11 +110,11 @@ export default function CreateVaultForm() {
         setIsCreating(true);
 
         try {
-            // UPDATED: IPFS upload no longer includes beneficiary for PrizePools
+            // IPFS upload logic
             setStatusMessage("Uploading agreement to IPFS...");
             const ipfsData = vaultType === 'Milestone' 
                 ? { beneficiary, tokenAddress, terms, vaultType }
-                : { tokenAddress, terms, vaultType }; // No beneficiary for PrizePool
+                : { tokenAddress, terms, vaultType };
             const jsonFile = new File([JSON.stringify(ipfsData)], "vault-terms.json", { type: "application/json" });
             
             const urlRequest = await fetch("/api/upload");
@@ -110,21 +123,19 @@ export default function CreateVaultForm() {
             const termsCID = uploadResult.cid;
             setStatusMessage(`Agreement stored. Preparing transaction...`);
 
+            const releaseTimestamp = Math.floor(new Date(`${releaseDate}T${releaseTime}`).getTime() / 1000);
+            
             let tx;
-            // --- UPDATED: Switched to new contract functions ---
             if (vaultType === "PrizePool") {
-                const releaseTimestamp = Math.floor(new Date(`${releaseDate}T${releaseTime}`).getTime() / 1000);
                 setStatusMessage("Sending transaction to create Prize Pool Vault...");
-                // Calls createPrizePoolVault with no beneficiary
                 tx = await vaultFactoryContract.createPrizePoolVault(tokenAddress, amountToApprove, releaseTimestamp, termsCID);
             } else {
-                // For Milestone, we now add a check for the beneficiary address
                 if (!ethers.isAddress(beneficiary)) {
                     setError("A valid beneficiary address is required for Milestone vaults.");
                     setIsCreating(false);
                     return;
                 }
-                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), 6));
+                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), activeChainConfig.usdcToken.decimals));
                 setStatusMessage("Sending transaction to create Milestone Vault...");
                 tx = await vaultFactoryContract.createMilestoneVault(beneficiary, tokenAddress, payouts, termsCID);
             }

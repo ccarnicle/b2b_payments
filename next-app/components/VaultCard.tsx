@@ -10,13 +10,19 @@ interface Vault {
     totalAmount: bigint | string;
 }
 
+interface VaultCardProps {
+    vault: Vault;
+    tokenSymbol: string;
+    tokenDecimals: number;
+}
+
 const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-export function VaultCard({ vault }: { vault: Vault }) {
+export function VaultCard({ vault, tokenSymbol, tokenDecimals }: VaultCardProps) {
     // --- UPDATED LOGIC ---
     const isPrizePool = vault.vaultType === 0;
     const vaultTypeString = isPrizePool ? "Prize Pool" : "Milestone";
-    const formattedAmount = vault.totalAmount ? ethers.formatUnits(vault.totalAmount, 6) : "0";
+    const formattedAmount = vault.totalAmount ? ethers.formatUnits(vault.totalAmount, tokenDecimals) : "0";
 
     return (
         <div className="bg-card p-5 md:p-6 lg:p-7 rounded-lg border border-muted flex flex-col justify-between shadow-md hover:shadow-lg transition-shadow min-h-[220px] md:min-h-[240px] max-w-md mx-auto w-full">
@@ -28,7 +34,7 @@ export function VaultCard({ vault }: { vault: Vault }) {
                         {vaultTypeString}
                     </span>
                 </div>
-                <p className="text-3xl md:text-4xl lg:text-5xl font-bold my-4 md:my-5">{formattedAmount} <span className="text-xl md:text-2xl lg:text-3xl text-muted-foreground">USDFC</span></p>
+                <p className="text-3xl md:text-4xl lg:text-5xl font-bold my-4 md:my-5">{formattedAmount} <span className="text-xl md:text-2xl lg:text-3xl text-muted-foreground">{tokenSymbol}</span></p>
                 <div className="space-y-2 text-sm md:text-base text-muted-foreground">
                     <p><strong>Funder:</strong> {formatAddress(vault.funder)}</p>
                     {/* Logic for beneficiary is already correct, showing only for non-prize-pools */}

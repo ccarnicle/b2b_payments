@@ -10,24 +10,25 @@ This package contains the Next.js frontend for the **Smart Pacts** project.
 - **ethers.js v6:** For smart contract interaction.
 - **TypeScript:** For type safety.
 
-## ✅ Current Status: MVP Functionality Complete
+## ✅ Current Status: Multi-Chain MVP Complete
 
-The frontend is feature-complete for the MVP. The entire user journey—from creating a pact to distributing funds—is fully implemented and tested on the Filecoin Calibration testnet.
+The frontend is feature-complete for the MVP. The entire user journey—from creating a pact to distributing funds—is fully implemented and tested on both the **Filecoin Calibration** and **Flow EVM** testnets.
 
 - **Pact Creation:** A unified form at `/dashboard/create` allows users to create and fund both **Prize Pool** and **Milestone** pacts, including the secure upload of terms to IPFS.
 - **Pact Browsing:** The homepage (`/`) displays all created pacts by fetching on-chain event data.
 - **Pact Detailing:** The dynamic detail page (`/dashboard/pact/[id]`) shows comprehensive on-chain data and the full agreement terms from IPFS.
 - **Fund Distribution:** The UI provides conditional actions, allowing funders to release milestone payments or distribute prize pool funds to multiple recipients after the time lock has expired.
-- **New! Dashboard Layout:** The application has been migrated to a robust dashboard structure. A persistent sidebar provides clear navigation, and a global layout enforces user authentication and network correctness (Filecoin Calibration) before rendering any sensitive content.
+- **Chain-Aware UI:** The entire application is now multi-chain aware. The `Web3Context` provides network-specific details (contract addresses, token symbols, decimals), and all components—from the creation form to the pact cards and detail pages—dynamically update to show the correct information for the connected network.
+- **Dashboard Layout:** The application has been migrated to a robust dashboard structure. A persistent sidebar provides clear navigation, and a global layout enforces user authentication and connection to a supported network before rendering any sensitive content.
 
-## 📈 Next Steps: Polish & Multi-Chain Support
+## 📈 Next Steps: Final Polish & Submission Prep
 
-The next phase is focused on refining the user experience and expanding the project's reach.
+With the core multi-chain functionality complete, the next steps are focused on preparing for submission.
 
 - [x] **UI/Layout Refactor:** Re-architect the UI into a dashboard layout with a dedicated sidebar for navigation.
 - [x] **Create New App Pages:** Build out pages for `/dashboard/active`, `/dashboard/completed`, and a placeholder for `/dashboard/invoices`.
-- [In-Progress] **Multi-Chain Context:** Implement a network context to manage chain-specific details (RPC URLs, contract addresses). A `Web3Context` has been established as the foundation.
-- [ ] **Flow EVM Integration:** Deploy the contract to the Flow EVM testnet and add it to the network context, enabling a network switcher in the UI.
+- [x] **Multi-Chain Integration:** Implemented a robust `Web3Context` to manage chain-specific details (RPC URLs, contract addresses, token info) and integrated it across the entire application. The UI now fully supports both Filecoin Calibration and Flow EVM testnets.
+- [ ] **Finalize Documentation & Record Demo:** Prepare all written materials and record the final demo video.
 
 ### 🎨 Branding & Color Palette
 The application uses a modern, clean **light theme**. The color system is built into `globals.css` using CSS variables and is fully integrated with Tailwind CSS.

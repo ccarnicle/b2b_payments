@@ -45,7 +45,7 @@ interface Vault extends ContractVaultDetails {
 }
 
 export default function CompletedPactsPage() {
-  const { vaultFactoryContract, account } = useWeb3();
+  const { vaultFactoryContract, account, activeChainConfig } = useWeb3();
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -148,7 +148,12 @@ export default function CompletedPactsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
           {vaults.map((vault) => (
-            <VaultCard key={vault.id} vault={vault} />
+            <VaultCard 
+              key={vault.id} 
+              vault={vault}
+              tokenSymbol={activeChainConfig?.usdcToken.symbol || ''}
+              tokenDecimals={activeChainConfig?.usdcToken.decimals || 18}
+            />
           ))}
         </div>
       )}

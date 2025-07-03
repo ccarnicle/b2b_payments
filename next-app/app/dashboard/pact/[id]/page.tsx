@@ -37,7 +37,7 @@ export default function VaultDetailPage() {
   const params = useParams();
   const vaultId = params.id as string;
 
-  const { vaultFactoryContract, account } = useWeb3();
+  const { vaultFactoryContract, account, activeChainConfig } = useWeb3();
   const [details, setDetails] = useState<VaultDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -46,7 +46,7 @@ export default function VaultDetailPage() {
 
   // The fetch logic is unchanged
   const fetchVaultDetails = useCallback(async () => {
-    if (!vaultId || !vaultFactoryContract) return;
+    if (!vaultId || !vaultFactoryContract || !activeChainConfig) return;
     setError('');
     setStatus('');
     try {
@@ -57,17 +57,20 @@ export default function VaultDetailPage() {
         const response = await fetch(ipfsUrl);
         if(response.ok) termsData = await response.json();
       }
+      
+      const tokenDecimals = activeChainConfig.usdcToken.decimals;
+      
       setDetails({
         funder: data.funder,
         beneficiary: data.beneficiary,
         token: data.token,
         vaultType: Number(data.vaultType),
-        totalAmount: ethers.formatUnits(data.totalAmount, 6),
-        amountWithdrawn: ethers.formatUnits(data.amountWithdrawn, 6),
+        totalAmount: ethers.formatUnits(data.totalAmount, tokenDecimals),
+        amountWithdrawn: ethers.formatUnits(data.amountWithdrawn, tokenDecimals),
         termsCID: data.termsCID,
         finalized: data.finalized,
         releaseTime: Number(data.releaseTime),
-        milestonePayouts: data.milestonePayouts.map((p: bigint) => ethers.formatUnits(p, 6)),
+        milestonePayouts: data.milestonePayouts.map((p: bigint) => ethers.formatUnits(p, tokenDecimals)),
         milestonesPaid: data.milestonesPaid,
         nextMilestoneToPay: Number(data.nextMilestoneToPay),
         termsContent: termsData,
@@ -78,7 +81,7 @@ export default function VaultDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [vaultId, vaultFactoryContract]);
+  }, [vaultId, vaultFactoryContract, activeChainConfig]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -132,6 +135,7 @@ export default function VaultDetailPage() {
           <DistributePrizePoolForm 
               vaultId={vaultId}
               totalAmount={details.totalAmount}
+              tokenSymbol={activeChainConfig?.usdcToken.symbol || ''}
               onDistributeSuccess={fetchVaultDetails}
           />
       )}
@@ -159,8 +163,8 @@ export default function VaultDetailPage() {
           <DetailItem label="Funder" value={details.funder} />
           {/* Only show beneficiary for Milestone vaults */}
           {isMilestone && <DetailItem label="Beneficiary" value={details.beneficiary} />}
-          <DetailItem label="Total Value" value={`${details.totalAmount} USDFC`} />
-          <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} USDFC`} />
+          <DetailItem label="Total Value" value={`${details.totalAmount} ${activeChainConfig?.usdcToken.symbol || ''}`} />
+          <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} ${activeChainConfig?.usdcToken.symbol || ''}`} />
           {/* Show Prize Pool as the type */}
           <DetailItem label="Vault Type" value={isPrizePool ? "Prize Pool" : "Milestone-Based"} />
           {/* Show unlock time for Prize Pool vaults */}
@@ -198,7 +202,7 @@ export default function VaultDetailPage() {
                  <ul className="space-y-2">
                     {details.milestonePayouts?.map((payout, index) => (
                         <li key={index} className={`flex justify-between p-2 rounded-md ${details.milestonesPaid![index] ? 'bg-green-500/20' : 'bg-background'}`}>
-                            <span>Milestone {index + 1}: {payout} USDFC</span>
+                            <span>Milestone {index + 1}: {payout} ${activeChainConfig?.usdcToken.symbol || ''}</span>
                             <span>{details.milestonesPaid![index] ? '✅ Paid' : '⏳ Pending'}</span>
                         </li>
                     ))}
