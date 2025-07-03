@@ -9,8 +9,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { login, authenticated, chainId, isReady } = useWeb3();
-  const FILECOIN_CALIBRATION_CHAIN_ID = 314159;
+  const { login, authenticated, activeChainConfig, isReady } = useWeb3();
 
   if (!isReady) {
     return (
@@ -39,8 +38,7 @@ export default function DashboardLayout({
     );
   }
 
-  const isCorrectNetwork =
-    chainId === `eip155:${FILECOIN_CALIBRATION_CHAIN_ID}`;
+  const isCorrectNetwork = activeChainConfig !== null;
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6">
@@ -62,10 +60,9 @@ export default function DashboardLayout({
                   children
                 ) : (
                   <div className="text-center p-8">
-                    <h2 className="text-2xl font-bold mb-4">Wrong Network</h2>
+                    <h2 className="text-2xl font-bold mb-4">Unsupported Network</h2>
                     <p className="text-muted-foreground">
-                      Please switch to the Filecoin Calibration testnet to
-                      continue.
+                      Please switch to the Filecoin Calibration or Flow-EVM testnet to continue.
                     </p>
                   </div>
                 )}

@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { useWeb3 } from '@/lib/contexts/Web3Context';
 import { PinataSDK } from 'pinata';
 import Erc20Abi from '@/lib/abi/Erc20.json';
-import { VAULT_FACTORY_ADDRESS } from '@/lib/contracts';
 
 const pinata = new PinataSDK({});
 
@@ -15,12 +14,12 @@ type VaultType = "PrizePool" | "Milestone";
 
 export default function CreateVaultForm() {
     const router = useRouter();
-    const { signer, vaultFactoryContract } = useWeb3(); 
+    const { signer, vaultFactoryContract, activeChainConfig } = useWeb3(); 
 
     // UPDATED: Initial state is now "PrizePool"
     const [vaultType, setVaultType] = useState<VaultType>("PrizePool");
     const [beneficiary, setBeneficiary] = useState("");
-    const [tokenAddress, setTokenAddress] = useState("0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0"); // Pre-filled USDFC Testnet address
+    const [tokenAddress, setTokenAddress] = useState("");
     const [terms, setTerms] = useState("");
     const [releaseDate, setReleaseDate] = useState(() => {
         const oneWeekFromNow = new Date();
@@ -41,24 +40,31 @@ export default function CreateVaultForm() {
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        if (activeChainConfig) {
+            setTokenAddress(activeChainConfig.usdcToken.address);
+            setIsApproved(false); // Reset approval when network changes
+        }
+    }, [activeChainConfig]);
+
     const amountToApprove = useMemo(() => {
+        if (!activeChainConfig) return 0n;
         try {
-            // UPDATED: Renamed to PrizePool
+            const decimals = activeChainConfig.usdcToken.decimals;
             if (vaultType === 'PrizePool') {
-                return ethers.parseUnits(totalAmount || '0', 6);
+                return ethers.parseUnits(totalAmount || '0', decimals);
             } else {
-                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim() || '0', 6));
+                const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim() || '0', decimals));
                 return payouts.reduce((acc, val) => acc + val, 0n);
             }
         } catch { return 0n; }
-    }, [vaultType, totalAmount, milestoneAmounts]);
+    }, [vaultType, totalAmount, milestoneAmounts, activeChainConfig]);
 
     const needsApproval = amountToApprove > 0n;
 
     const handleApprove = async () => {
-        // ... approve logic is unchanged, as it's just for the ERC20 token
-        if (!signer || !tokenAddress) {
-            setError("Please connect your wallet and provide a token address.");
+        if (!signer || !tokenAddress || !activeChainConfig?.vaultFactoryAddress) {
+            setError("Cannot approve: Wallet not connected or network configuration is missing.");
             return;
         }
         setError('');
@@ -66,7 +72,7 @@ export default function CreateVaultForm() {
         setIsApproving(true);
         try {
             const tokenContract = new ethers.Contract(tokenAddress, Erc20Abi, signer);
-            const tx = await tokenContract.approve(VAULT_FACTORY_ADDRESS, amountToApprove);
+            const tx = await tokenContract.approve(activeChainConfig.vaultFactoryAddress, amountToApprove);
             setStatusMessage("Approval transaction sent... waiting for confirmation.");
             await tx.wait();
             setIsApproved(true);
@@ -125,7 +131,7 @@ export default function CreateVaultForm() {
 
             await tx.wait();
             setStatusMessage('✅ Vault created successfully! Redirecting...');
-            setTimeout(() => router.push('/'), 3000);
+            setTimeout(() => router.push('/dashboard/active'), 3000);
 
         } catch (err: unknown) {
             console.error("Error creating vault:", err);
@@ -159,8 +165,10 @@ export default function CreateVaultForm() {
             )}
 
             <div className="space-y-2">
-                <label htmlFor="tokenAddress" className={labelStyles}>Token Address (USDFC)</label>
-                <input id="tokenAddress" type="text" value={tokenAddress} onChange={e => { setTokenAddress(e.target.value); setIsApproved(false); }} className={inputStyles} placeholder="0x..." required />
+                <label htmlFor="tokenAddress" className={labelStyles}>
+                    Token Address ({activeChainConfig?.usdcToken.symbol || '...'})
+                </label>
+                <input id="tokenAddress" type="text" value={tokenAddress} readOnly className={`${inputStyles} bg-muted/50`} placeholder="Auto-filled by network..." />
             </div>
             <div className="space-y-2">
                 <label htmlFor="terms" className={labelStyles}>Terms & Deliverables</label>
