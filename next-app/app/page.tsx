@@ -9,7 +9,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="bg-primary text-primary-foreground rounded-2xl p-12 grid md:grid-cols-5 gap-12 items-center">
             <div className="space-y-6 md:col-span-3">
-              <p className="font-semibold text-secondary-foreground">Smart Pacts for Independent Creators</p>
+              <p className="font-semibold text-secondary-foreground">Pact for Independent Creators</p>
               <h1 className="text-5xl font-bold font-display tracking-tight leading-relaxed">
                 Payments, simplified.
                 <br />

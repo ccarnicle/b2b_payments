@@ -12,7 +12,7 @@ const Logo = () => (
   <Link href="/" className="flex items-center">
     <Image
       src="/smart_pacts_logo_landscape.png"
-      alt="Smart Pacts Landscape Logo"
+      alt="Pact Landscape Logo"
       width={200}
       height={100}
     />
@@ -26,7 +26,7 @@ const ChevronDown = () => (
   );
 
 export default function Header() {
-  const { login, logout, account, authenticated, activeChainConfig } = useWeb3(); // <-- USE our hook
+  const { login, logout, account, authenticated } = useWeb3(); // <-- USE our hook
   const pathname = usePathname();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);

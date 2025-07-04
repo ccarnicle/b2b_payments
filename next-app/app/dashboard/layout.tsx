@@ -23,7 +23,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
         <div className="text-center bg-card p-8 rounded-lg border border-muted shadow-sm max-w-md w-full">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Smart Pacts</h1>
+          <h1 className="text-2xl font-bold mb-4">Welcome to Pact</h1>
           <p className="text-muted-foreground mb-6">
             Please sign in to manage your agreements.
           </p>

@@ -130,7 +130,7 @@ export default function CompletedPactsPage() {
   return (
     <>
       <div className="text-center my-6 md:my-8">
-        <h1 className="text-2xl md:text-4xl font-bold font-display">Completed Smart Pacts</h1>
+        <h1 className="text-2xl md:text-4xl font-bold font-display">Completed Pacts</h1>
         <p className="mt-2 text-sm md:text-lg text-muted-foreground">
           A record of all your successfully completed and paid-out agreements.
         </p>
