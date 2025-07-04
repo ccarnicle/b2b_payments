@@ -127,9 +127,9 @@ export default function ActivePactsPage() {
   return (
     <>
       <div className="text-center my-6 md:my-8">
-        <h1 className="text-2xl md:text-4xl font-bold font-display">Active Smart Pacts</h1>
+        <h1 className="text-2xl md:text-4xl font-bold font-display">Active Pacts</h1>
         <p className="mt-2 text-sm md:text-lg text-muted-foreground">
-          A transparent, on-chain record of your active payment vaults.
+          A transparent, on-chain record of your active agreements.
         </p>
       </div>
 
@@ -143,7 +143,7 @@ export default function ActivePactsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {vaults.map((vault) => (
             <VaultCard 
               key={vault.id} 

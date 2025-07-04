@@ -26,7 +26,7 @@ const ChevronDown = () => (
   );
 
 export default function Header() {
-  const { login, logout, account, authenticated } = useWeb3(); // <-- USE our hook
+  const { login, logout, account, authenticated, activeChainConfig } = useWeb3(); // <-- USE our hook
   const pathname = usePathname();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);

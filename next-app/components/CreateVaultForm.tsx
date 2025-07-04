@@ -177,7 +177,7 @@ export default function CreateVaultForm() {
 
             <div className="space-y-2">
                 <label htmlFor="tokenAddress" className={labelStyles}>
-                    Token Address ({activeChainConfig?.primaryCoin.symbol || '...'})
+                    Escrow Token ({activeChainConfig?.primaryCoin.symbol || '...'})
                 </label>
                 <input id="tokenAddress" type="text" value={tokenAddress} readOnly className={`${inputStyles} bg-muted/50`} placeholder="Auto-filled by network..." />
             </div>

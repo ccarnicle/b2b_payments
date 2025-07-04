@@ -11,6 +11,7 @@ import { VAULT_FACTORY_ABI } from '@/lib/contracts';
 interface ChainConfig {
   chainId: string; // Chain ID as a hex string (e.g., "0x1337" for localhost, "0x4e45415f" for Filecoin Calibration)
   name: string;
+  logo: string; // Path to the network's logo
   contractAddress: string; // The VaultFactory address for this specific chain
   explorerUrl: string; // Base URL for the block explorer
   nativeCurrency: { // Details about the native currency of the chain
@@ -31,7 +32,8 @@ interface ChainConfig {
 const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     chainId: "0x4cb2f", // Filecoin Calibration Testnet (314159 in decimal)
-    name: "Filecoin Calibration Testnet",
+    name: "Filecoin Calibration",
+    logo: "/filecoin_logo.png", // Path to the Filecoin logo in the public directory
     contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
     explorerUrl: "https://calibration.filfox.info/en",
     nativeCurrency: {
@@ -49,6 +51,7 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     chainId: "0x221", // Flow EVM Testnet (545 in decimal)
     name: "Flow EVM Testnet",
+    logo: "/flow_logo.png", // Path to the Flow logo in the public directory
     contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_FLOW as string,
     explorerUrl: "https://evm-testnet.flowscan.io",
     nativeCurrency: {

@@ -76,8 +76,8 @@ export default function VaultDetailPage() {
         termsContent: termsData,
       });
     } catch (err) {
-      console.error("Failed to fetch vault details:", err);
-      setError("Could not fetch vault details.");
+      console.error("Failed to fetch pact details:", err);
+      setError("Could not fetch pact details.");
     } finally {
       setIsLoading(false);
     }
@@ -108,9 +108,9 @@ export default function VaultDetailPage() {
   };
 
 
-  if (isLoading) return <div className="text-center py-10">Loading Vault Details...</div>;
+  if (isLoading) return <div className="text-center py-10">Loading Pact Details...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
-  if (!details) return <div className="text-center py-10">No vault details found.</div>;
+  if (!details) return <div className="text-center py-10">No pact details found.</div>;
 
   // --- UPDATED: New conditional rendering logic ---
   const isFunder = account && details.funder.toLowerCase() === account.toLowerCase();
@@ -158,7 +158,7 @@ export default function VaultDetailPage() {
 
       {/* --- UPDATED: DETAILS SECTION --- */}
       <div className="bg-card p-8 rounded-lg border border-muted">
-        <h2 className="text-xl font-bold font-display mb-4">Vault Information</h2>
+        <h2 className="text-xl font-bold font-display mb-4">Pact Information</h2>
         <dl>
           <DetailItem label="Funder" value={details.funder} />
           {/* Only show beneficiary for Milestone vaults */}
@@ -166,7 +166,7 @@ export default function VaultDetailPage() {
           <DetailItem label="Total Value" value={`${details.totalAmount} ${activeChainConfig?.primaryCoin.symbol || ''}`} />
           <DetailItem label="Amount Withdrawn" value={`${details.amountWithdrawn} ${activeChainConfig?.primaryCoin.symbol || ''}`} />
           {/* Show Prize Pool as the type */}
-          <DetailItem label="Vault Type" value={isPrizePool ? "Prize Pool" : "Milestone-Based"} />
+          <DetailItem label="Pact Type" value={isPrizePool ? "Prize Pool" : "Milestone-Based"} />
           {/* Show unlock time for Prize Pool vaults */}
           {isPrizePool && details.releaseTime && (
             <DetailItem 
