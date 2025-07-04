@@ -21,6 +21,9 @@ export default function CreateVaultForm() {
     const [beneficiary, setBeneficiary] = useState("");
     const [tokenAddress, setTokenAddress] = useState("");
     const [terms, setTerms] = useState("");
+    const [pdfCid, setPdfCid] = useState<string | null>(null);
+    const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('');
 
     // A single, consistent date object for initialization.
     const getInitialFutureDate = () => {
@@ -99,10 +102,54 @@ export default function CreateVaultForm() {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handlePdfUpload(file);
+        }
+    };
+
+    const handlePdfUpload = async (file: File) => {
+        if (!file) return;
+
+        setIsUploadingPdf(true);
+        setUploadStatus('Getting upload URL...');
+        setError('');
+        try {
+            const urlRequest = await fetch("/api/upload");
+            const { url: signedUrl, error } = await urlRequest.json();
+
+            if (error || !signedUrl) {
+                throw new Error(error || "Could not get a signed URL for upload.");
+            }
+
+            setUploadStatus('Uploading PDF to IPFS...');
+            const pinata = new PinataSDK({});
+            const uploadResult = await pinata.upload.public.file(file).url(signedUrl);
+            const cid = uploadResult.cid;
+            
+            console.log("PDF uploaded with CID:", cid);
+            setPdfCid(cid);
+            setUploadStatus(`✓ PDF uploaded!`);
+        } catch (err) {
+            console.error("Error uploading PDF:", err);
+            const errorMessage = err instanceof Error ? err.message : 'Could not upload the PDF file. Please try again.';
+            setUploadStatus(`Error: ${errorMessage}`);
+            setError(errorMessage);
+        } finally {
+            setIsUploadingPdf(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!vaultFactoryContract || !activeChainConfig) { 
             setError('Wallet not connected or contract not initialized.');
+            return;
+        }
+
+        if (!terms && !pdfCid) {
+            setError('Please provide terms or upload a PDF.');
             return;
         }
 
@@ -113,8 +160,8 @@ export default function CreateVaultForm() {
             // IPFS upload logic
             setStatusMessage("Uploading agreement to IPFS...");
             const ipfsData = vaultType === 'Milestone' 
-                ? { beneficiary, tokenAddress, terms, vaultType }
-                : { tokenAddress, terms, vaultType };
+                ? { beneficiary, tokenAddress, terms, vaultType, pdfCid }
+                : { tokenAddress, terms, vaultType, pdfCid };
             const jsonFile = new File([JSON.stringify(ipfsData)], "vault-terms.json", { type: "application/json" });
             
             const urlRequest = await fetch("/api/upload");
@@ -183,7 +230,14 @@ export default function CreateVaultForm() {
             </div>
             <div className="space-y-2">
                 <label htmlFor="terms" className={labelStyles}>Terms & Deliverables</label>
-                <textarea id="terms" value={terms} onChange={e => setTerms(e.target.value)} className={inputStyles} rows={4} placeholder="e.g., Hackathon rules, project grant scope..." required />
+                <textarea id="terms" value={terms} onChange={e => setTerms(e.target.value)} className={inputStyles} rows={4} placeholder="e.g., Hackathon rules, project grant scope..." required={!pdfCid} />
+                <div className="mt-2 text-sm text-center">
+                    <label htmlFor="pdf-upload" className="text-blue-500 hover:text-blue-600 hover:underline cursor-pointer font-medium">
+                        {pdfCid ? 'Replace PDF' : 'or Upload a PDF'}
+                    </label>
+                    <input id="pdf-upload" type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" disabled={isUploadingPdf} />
+                    {uploadStatus && <p className="mt-1 text-foreground/80">{uploadStatus}</p>}
+                </div>
             </div>
 
             {/* UPDATED: Renamed to PrizePool */}
@@ -204,19 +258,25 @@ export default function CreateVaultForm() {
                 </div>
             )}
 
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                {needsApproval && (
-                    <button type="button" onClick={handleApprove} disabled={isApproving || isApproved} className={`${buttonStyles} w-full sm:w-1/2 bg-secondary text-secondary-foreground hover:bg-secondary/90 ${disabledStyles}`}>
-                        {isApproving ? 'Approving...' : (isApproved ? '✓ Approved' : '1. Approve Funds')}
+            <div className="h-px bg-muted w-full my-6"></div>
+            
+            {needsApproval && (
+                 <div className="space-y-4">
+                    <p className="text-sm text-center text-foreground/80">
+                        To create this vault, you must first grant the factory contract permission to transfer the required amount of {activeChainConfig?.primaryCoin.symbol || 'tokens'}.
+                    </p>
+                    <button type="button" onClick={handleApprove} disabled={isApproving || isApproved} className={`${buttonStyles} w-full bg-secondary text-secondary-foreground ${disabledStyles}`}>
+                        {isApproving ? 'Approving...' : (isApproved ? '✓ Approved' : `Approve ${ethers.formatUnits(amountToApprove, activeChainConfig?.primaryCoin.decimals)} ${activeChainConfig?.primaryCoin.symbol}`)}
                     </button>
-                )}
-                <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved)} className={`${buttonStyles} ${needsApproval ? 'w-full sm:w-1/2' : 'w-full'} bg-accent text-accent-foreground hover:bg-accent/90 ${disabledStyles}`}>
-                    {isCreating ? 'Creating...' : (needsApproval ? '2. Create Vault' : 'Create Vault')}
-                </button>
-            </div>
+                </div>
+            )}
+           
+            <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf} className={`${buttonStyles} w-full bg-primary text-primary-foreground ${disabledStyles}`}>
+                {isCreating ? 'Creating Vault...' : 'Create Vault'}
+            </button>
 
-            {statusMessage && <p className="text-green-600 text-sm text-center pt-2">{statusMessage}</p>}
-            {error && <p className="text-red-600 text-sm text-center pt-2">{error}</p>}
+            {statusMessage && <p className="text-center text-sm text-green-400">{statusMessage}</p>}
+            {error && <p className="text-center text-sm text-red-500">{error}</p>}
         </form>
     );
 }

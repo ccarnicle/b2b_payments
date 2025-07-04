@@ -8,6 +8,7 @@ interface Vault {
     beneficiary: string;
     vaultType: number; // This will now correctly be a number
     totalAmount: bigint | string;
+    releaseTime?: bigint; // Add releaseTime for Prize Pool vaults
 }
 
 interface VaultCardProps {
@@ -17,6 +18,14 @@ interface VaultCardProps {
 }
 
 const formatAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+const formatUnlockDate = (releaseTime: bigint) => {
+    const date = new Date(Number(releaseTime) * 1000);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    return `${month}/${day}/${year}`;
+};
 
 export function VaultCard({ vault, tokenSymbol, tokenDecimals }: VaultCardProps) {
     // --- UPDATED LOGIC ---
@@ -40,6 +49,10 @@ export function VaultCard({ vault, tokenSymbol, tokenDecimals }: VaultCardProps)
                     {/* Logic for beneficiary is already correct, showing only for non-prize-pools */}
                     {!isPrizePool && vault.beneficiary !== ethers.ZeroAddress && (
                          <p><strong>Beneficiary:</strong> {formatAddress(vault.beneficiary)}</p>
+                    )}
+                    {/* Show unlock date for Prize Pool vaults */}
+                    {isPrizePool && vault.releaseTime && (
+                        <p><strong>Unlocks:</strong> {formatUnlockDate(vault.releaseTime)}</p>
                     )}
                 </div>
             </div>
