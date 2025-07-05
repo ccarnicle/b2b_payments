@@ -67,7 +67,7 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
         address: "0x0000000000000000000000000000000000000000", // Native token placeholder
         symbol: "tFIL",
         decimals: 18,
-        minBalance: "0.1",
+        minBalance: "0.01",
         faucetUrl: "https://faucet.calibnet.chainsafe-fil.io/funds.html",
         faucetInstructions: "Get test FIL from the Calibration faucet"
       },
