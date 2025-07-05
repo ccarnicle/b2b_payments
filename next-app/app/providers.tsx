@@ -4,9 +4,16 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { ReactNode } from 'react';
 
 export function Providers({ children }: { children: ReactNode }) {
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  
+  // If no Privy app ID is available, return children without Privy provider
+  if (!privyAppId) {
+    return <>{children}</>;
+  }
+
   return (
     <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
+      appId={privyAppId}
       config={{
         // Create embedded wallets for users who don't have a wallet
         embeddedWallets: {

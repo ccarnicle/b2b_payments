@@ -137,7 +137,8 @@ interface Web3ContextType {
 
 const Web3Context = createContext<Web3ContextType | null>(null);
 
-export function Web3Provider({ children }: { children: ReactNode }) {
+// Internal component that uses Privy hooks
+function Web3ProviderInner({ children }: { children: ReactNode }) {
   const { ready: isReady, authenticated, user, login, logout } = usePrivy();
   const { wallets } = useWallets();
 
@@ -222,6 +223,33 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   };
 
   return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;
+}
+
+// Main Web3Provider component that conditionally renders based on Privy availability
+export function Web3Provider({ children }: { children: ReactNode }) {
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  
+  // If no Privy app ID, provide a fallback context
+  if (!privyAppId) {
+    const fallbackValue: Web3ContextType = {
+      provider: null,
+      signer: null,
+      vaultFactoryContract: null,
+      account: null,
+      login: () => {},
+      logout: () => {},
+      isReady: false,
+      authenticated: false,
+      chainId: null,
+      supportedChains: SUPPORTED_CHAINS,
+      activeChainConfig: null,
+    };
+    
+    return <Web3Context.Provider value={fallbackValue}>{children}</Web3Context.Provider>;
+  }
+
+  // If Privy is available, use the inner component with hooks
+  return <Web3ProviderInner>{children}</Web3ProviderInner>;
 }
 
 // Custom hook to consume the Web3 context
