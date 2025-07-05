@@ -17,7 +17,7 @@ interface DistributeWinningsFormProps {
 }
 
 export default function DistributeWinningsForm({ poolId, totalAmountInPot, onDistributeSuccess }: DistributeWinningsFormProps) {
-  const { contract } = useWeb3();
+  const { vaultFactoryContract } = useWeb3();
   const [winners, setWinners] = useState<Winner[]>([{ address: '', amount: '' }]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +51,7 @@ export default function DistributeWinningsForm({ poolId, totalAmountInPot, onDis
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contract) {
+    if (!vaultFactoryContract) {
       setError('Wallet not connected or contract not found.');
       return;
     }
@@ -77,7 +77,7 @@ export default function DistributeWinningsForm({ poolId, totalAmountInPot, onDis
     setIsLoading(true);
 
     try {
-      const tx = await contract.distributeWinnings(poolId, recipientAddresses, amountsInWei);
+      const tx = await vaultFactoryContract.distributeWinnings(poolId, recipientAddresses, amountsInWei);
       setSuccess('Distribution transaction sent! Waiting for confirmation...');
       
       await tx.wait();

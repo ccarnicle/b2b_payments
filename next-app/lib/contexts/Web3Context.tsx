@@ -7,6 +7,16 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 // Only import the ABI, as contract addresses will be dynamic
 import { VAULT_FACTORY_ABI } from '@/lib/contracts'; 
 
+// Define interface for token balance requirements
+interface TokenRequirement {
+  address: string;
+  symbol: string;
+  decimals: number;
+  minBalance: string; // Minimum balance required (as string to avoid precision issues)
+  faucetUrl: string;
+  faucetInstructions: string;
+}
+
 // Define interface for a single chain configuration
 interface ChainConfig {
   chainId: string; // Chain ID as a hex string (e.g., "0x1337" for localhost, "0x4e45415f" for Filecoin Calibration)
@@ -26,6 +36,11 @@ interface ChainConfig {
     symbol: string;
     decimals: number;
   };
+  // NEW: Add balance requirements for vault creation
+  balanceRequirements: {
+    nativeToken: TokenRequirement;
+    escrowToken: TokenRequirement;
+  };
 }
 
 // Define all supported blockchain networks and their configurations
@@ -43,10 +58,28 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
     },
     rpcUrl: "https://api.calibration.node.glif.io/rpc/v1",
     primaryCoin: { // USDFC details for Filecoin Calibration
-      address: process.env.NEXT_PUBLIC_USDFC_ADDRESS_CALIBRATION as string, // Get this from your .env
+      address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string, // Get this from your .env
       symbol: "USDFC",
       decimals: 6, // Assuming USDFC has 6 decimals, common for USDC variants
     },
+    balanceRequirements: {
+      nativeToken: {
+        address: "0x0000000000000000000000000000000000000000", // Native token placeholder
+        symbol: "tFIL",
+        decimals: 18,
+        minBalance: "0.1",
+        faucetUrl: "https://faucet.calibnet.chainsafe-fil.io/funds.html",
+        faucetInstructions: "Get test FIL from the Calibration faucet"
+      },
+      escrowToken: {
+        address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string,
+        symbol: "USDFC",
+        decimals: 6,
+        minBalance: "0.1",
+        faucetUrl: "https://docs.secured.finance/usdfc-stablecoin/getting-started/getting-test-usdfc-on-testnet",
+        faucetInstructions: "Follow the guide to mint USDFC using tFIL"
+      }
+    }
   },
   {
     chainId: "0x221", // Flow EVM Testnet (545 in decimal)
@@ -65,6 +98,24 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
       symbol: "WFLOW", // Or USDC/USDT if that's the primaryCoin on Flow EVM you're using
       decimals: 18, // Assuming WFLOW has 18 decimals
     },
+    balanceRequirements: {
+      nativeToken: {
+        address: "0x0000000000000000000000000000000000000000", // Native token placeholder
+        symbol: "FLOW",
+        decimals: 18,
+        minBalance: "0.1",
+        faucetUrl: "https://faucet.flow.com/fund-account",
+        faucetInstructions: "Get test FLOW from the Flow faucet"
+      },
+      escrowToken: {
+        address: process.env.NEXT_PUBLIC_WFLOW_ADDRESS_FLOW as string,
+        symbol: "WFLOW",
+        decimals: 18,
+        minBalance: "0.1",
+        faucetUrl: "https://evm-testnet.flowscan.io/token/0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e?tab=write_contract",
+        faucetInstructions: "Use the deposit function to wrap FLOW into WFLOW"
+      }
+    }
   },
   // Add other networks here as needed in the future
 ];

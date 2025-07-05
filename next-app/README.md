@@ -1,6 +1,6 @@
 # Frontend (`next-app` package)
 
-This package contains the Next.js frontend for the **Smart Pacts** project.
+This package contains the Next.js frontend for the **Pact** project.
 
 ## 🛠️ Tech Stack
 - **Next.js 14+:** React framework (using App Router).

@@ -58,7 +58,7 @@ export default function LandingPage() {
           {/* Card 1 */}
           <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
             <div className="text-5xl mb-4">💡</div>
-            <h3 className="text-2xl font-bold mb-2">Prize Pools & Grants</h3>
+            <h3 className="text-2xl font-bold mb-2">Prize Pools</h3>
             <p className="text-muted-foreground mb-6">
               Easily fund hackathons, bounties, and community initiatives with multi-recipient payouts.
             </p>
@@ -66,7 +66,7 @@ export default function LandingPage() {
           {/* Card 2 */}
           <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
             <div className="text-5xl mb-4">💰</div>
-            <h3 className="text-2xl font-bold mb-2">Milestone-Based Contracts</h3>
+            <h3 className="text-2xl font-bold mb-2">Milestone-Based Grants</h3>
             <p className="text-muted-foreground mb-6">
               Secure agreements that release funds incrementally as project milestones are achieved.
             </p>
@@ -109,7 +109,7 @@ export default function LandingPage() {
                 <ul className="space-y-2 text-primary-foreground/80">
                   <li>› Filecoin Storage (IPFS)</li>
                   <li>› FVM & EVM Compatible</li>
-                  <li>› USDC Stablecoins</li>
+                  <li>› USDFC Stablecoin</li>
                 </ul>
               </div>
             </div>

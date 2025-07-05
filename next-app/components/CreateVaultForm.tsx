@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { useWeb3 } from '@/lib/contexts/Web3Context';
+import { useTokenBalances } from '@/lib/hooks/useTokenBalances';
 import { PinataSDK } from 'pinata';
 import Erc20Abi from '@/lib/abi/Erc20.json';
 
@@ -14,7 +15,8 @@ type VaultType = "PrizePool" | "Milestone";
 
 export default function CreateVaultForm() {
     const router = useRouter();
-    const { signer, vaultFactoryContract, activeChainConfig } = useWeb3(); 
+    const { signer, vaultFactoryContract, activeChainConfig } = useWeb3();
+    const { nativeToken, escrowToken, isLoading: isLoadingBalances, error: balanceError, hasSufficientBalances, refreshBalances } = useTokenBalances(); 
 
     // UPDATED: Initial state is now "PrizePool"
     const [vaultType, setVaultType] = useState<VaultType>("PrizePool");
@@ -223,10 +225,18 @@ export default function CreateVaultForm() {
             )}
 
             <div className="space-y-2">
-                <label htmlFor="tokenAddress" className={labelStyles}>
-                    Escrow Token ({activeChainConfig?.primaryCoin.symbol || '...'})
+                <label className={labelStyles}>
+                    Funding Token: {activeChainConfig && (
+                        <a 
+                            href={activeChainConfig.name === 'Flow-EVM' ? 'https://faucet.flow.com/fund-account' : 'https://calibration.filfox.info/en/address/0xb3042734b608a1B16e9e86B374A3f3e389B4cDf0'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-600 hover:underline"
+                        >
+                            {activeChainConfig.primaryCoin.symbol}
+                        </a>
+                    )}
                 </label>
-                <input id="tokenAddress" type="text" value={tokenAddress} readOnly className={`${inputStyles} bg-muted/50`} placeholder="Auto-filled by network..." />
             </div>
             <div className="space-y-2">
                 <label htmlFor="terms" className={labelStyles}>Terms & Deliverables</label>
@@ -270,8 +280,108 @@ export default function CreateVaultForm() {
                     </button>
                 </div>
             )}
+
+            {/* Balance Check Section - Only show when insufficient balances */}
+            {activeChainConfig && !hasSufficientBalances && (
+                <div className="space-y-4 p-4 border border-muted rounded-md bg-background/50">
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-display font-bold text-lg">Token Balance Check</h3>
+                        <button
+                            type="button"
+                            onClick={refreshBalances}
+                            disabled={isLoadingBalances}
+                            className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                            title="Refresh balances"
+                        >
+                            <svg className={`h-4 w-4 ${isLoadingBalances ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    {isLoadingBalances ? (
+                        <div className="flex items-center justify-center p-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <span className="ml-2 text-sm text-muted-foreground">Checking balances...</span>
+                        </div>
+                    ) : balanceError ? (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                            <p className="text-sm text-red-600">{balanceError}</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Native Token Balance */}
+                            {nativeToken && (
+                                <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`w-3 h-3 rounded-full ${nativeToken.hasMinBalance ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <span className="font-medium">{nativeToken.symbol}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium">
+                                            {parseFloat(nativeToken.balance).toFixed(4)} / {nativeToken.minBalance} required
+                                        </p>
+                                        {!nativeToken.hasMinBalance && (
+                                            <a 
+                                                href={nativeToken.faucetUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                                            >
+                                                Get more →
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Escrow Token Balance */}
+                            {escrowToken && (
+                                <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`w-3 h-3 rounded-full ${escrowToken.hasMinBalance ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <span className="font-medium">{escrowToken.symbol}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium">
+                                            {parseFloat(escrowToken.balance).toFixed(4)} / {escrowToken.minBalance} required
+                                        </p>
+                                        {!escrowToken.hasMinBalance && (
+                                            <a 
+                                                href={escrowToken.faucetUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                                            >
+                                                Get more →
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Insufficient Balance Warning */}
+                            {!hasSufficientBalances && !isLoadingBalances && (
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <div className="flex items-center">
+                                        <div className="flex-shrink-0">
+                                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div className="ml-3">
+                                            <p className="text-sm text-yellow-700">
+                                                <strong>Insufficient Balance:</strong> You need minimum balances to create a vault and pay gas fees.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
            
-            <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf} className={`${buttonStyles} w-full bg-primary text-primary-foreground ${disabledStyles}`}>
+            <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances} className={`${buttonStyles} w-full bg-primary text-primary-foreground ${disabledStyles}`}>
                 {isCreating ? 'Creating Vault...' : 'Create Vault'}
             </button>
 
