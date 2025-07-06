@@ -4,43 +4,41 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { ethers, BrowserProvider, Signer } from 'ethers';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-// Only import the ABI, as contract addresses will be dynamic
+// This import now refers to the VaultFactoryVerifiable ABI, as updated in contracts.ts
 import { VAULT_FACTORY_ABI } from '@/lib/contracts'; 
 
-// Define interface for token balance requirements
+// Define interfaces for blockchain configuration
 interface TokenRequirement {
   address: string;
   symbol: string;
   decimals: number;
-  minBalance: string; // Minimum balance required (as string to avoid precision issues)
+  minBalance: string;
   faucetUrl: string;
   faucetInstructions: string;
 }
 
-// Define interface for a single chain configuration
 interface ChainConfig {
-  chainId: string; // Chain ID as a hex string (e.g., "0x1337" for localhost, "0x4e45415f" for Filecoin Calibration)
+  chainId: string;
   name: string;
-  logo: string; // Path to the network's logo
-  contractAddress: string; // The VaultFactory address for this specific chain
-  explorerUrl: string; // Base URL for the block explorer
-  nativeCurrency: { // Details about the native currency of the chain
+  logo: string;
+  contractAddress: string;
+  explorerUrl: string;
+  nativeCurrency: {
     name: string;
     symbol: string;
     decimals: number;
   };
-  rpcUrl: string; // RPC URL for this chain (used for Privy config, not directly by ethers in this context)
-  // NEW: Add primaryCoin/ERC20 token specific to this chain
+  rpcUrl: string;
   primaryCoin: {
     address: string;
     symbol: string;
     decimals: number;
   };
-  // NEW: Add balance requirements for vault creation
   balanceRequirements: {
     nativeToken: TokenRequirement;
     escrowToken: TokenRequirement;
   };
+  showDetailedErrors: boolean; // Whether to show detailed error messages in forms
 }
 
 // Define all supported blockchain networks and their configurations
@@ -48,8 +46,9 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     chainId: "0x4cb2f", // Filecoin Calibration Testnet (314159 in decimal)
     name: "Filecoin Calibration",
-    logo: "/filecoin_logo.png", // Path to the Filecoin logo in the public directory
-    contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
+    logo: "/filecoin_logo.png",
+    // *** UPDATED: Use the verifiable contract address for Filecoin Calibration ***
+    contractAddress: process.env.NEXT_PUBLIC_VERIFIABLE_VAULT_FACTORY_ADDRESS_CALIBRATION as string,
     explorerUrl: "https://calibration.filfox.info/en",
     nativeCurrency: {
       name: "tFIL",
@@ -58,9 +57,9 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
     },
     rpcUrl: "https://api.calibration.node.glif.io/rpc/v1",
     primaryCoin: { // USDFC details for Filecoin Calibration
-      address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string, // Get this from your .env
+      address: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS_CALIBRATION as string,
       symbol: "USDFC",
-      decimals: 6, // Assuming USDFC has 6 decimals, common for USDC variants
+      decimals: 6,
     },
     balanceRequirements: {
       nativeToken: {
@@ -79,13 +78,15 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
         faucetUrl: "https://docs.secured.finance/usdfc-stablecoin/getting-started/getting-test-usdfc-on-testnet",
         faucetInstructions: "Follow the guide to mint USDFC using tFIL"
       }
-    }
+    },
+    showDetailedErrors: true
   },
   {
     chainId: "0x221", // Flow EVM Testnet (545 in decimal)
     name: "Flow EVM Testnet",
-    logo: "/flow_logo.png", // Path to the Flow logo in the public directory
-    contractAddress: process.env.NEXT_PUBLIC_VAULT_FACTORY_ADDRESS_FLOW as string,
+    logo: "/flow_logo.png",
+    // *** UPDATED: Use the verifiable contract address for Flow EVM ***
+    contractAddress: process.env.NEXT_PUBLIC_VERIFIABLE_VAULT_FACTORY_ADDRESS_FLOW as string,
     explorerUrl: "https://evm-testnet.flowscan.io",
     nativeCurrency: {
       name: "FLOW",
@@ -94,9 +95,9 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
     },
     rpcUrl: "https://testnet.evm.nodes.onflow.org",
     primaryCoin: { // WFLOW or other primaryCoin details for Flow EVM
-      address: process.env.NEXT_PUBLIC_WFLOW_ADDRESS_FLOW as string, // Get this from your .env
-      symbol: "WFLOW", // Or USDC/USDT if that's the primaryCoin on Flow EVM you're using
-      decimals: 18, // Assuming WFLOW has 18 decimals
+      address: process.env.NEXT_PUBLIC_WFLOW_ADDRESS_FLOW as string,
+      symbol: "WFLOW",
+      decimals: 18,
     },
     balanceRequirements: {
       nativeToken: {
@@ -115,7 +116,8 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
         faucetUrl: "https://evm-testnet.flowscan.io/token/0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e?tab=write_contract",
         faucetInstructions: "Use the deposit function to wrap FLOW into WFLOW"
       }
-    }
+    },
+    showDetailedErrors: false
   },
   // Add other networks here as needed in the future
 ];

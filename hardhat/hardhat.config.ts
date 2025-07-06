@@ -3,11 +3,19 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.28",
+  solidity: {
+    version: "0.8.28",
+    settings: {
+      optimizer: {
+        enabled: true, // Enable the optimizer
+        runs: 200,     // Number of runs for the optimizer (200 is a common default)
+      },
+      viaIR: true,     // Enable compilation via Intermediate Representation
+    }
+  },
   networks: {
     hardhat: {
       chainId: 1337, // This forces the Hardhat Network to use a specific chainId
-
     },
     calibration: {
       url: "https://api.calibration.node.glif.io/rpc/v1", // Public RPC endpoint

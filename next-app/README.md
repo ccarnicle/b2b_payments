@@ -6,20 +6,23 @@ This package contains the Next.js frontend for the **Pact** project.
 - **Next.js 14+:** React framework (using App Router).
 - **Privy:** For authentication and wallet management.
 - **Pinata:** For decentralized storage of pact agreements on IPFS.
+- **Synapse SDK:** For verifiable Filecoin storage deal creation and verification.
 - **Tailwind CSS v3:** For styling.
 - **ethers.js v6:** For smart contract interaction.
 - **TypeScript:** For type safety.
 
-## ✅ Current Status: Multi-Chain MVP Complete
+## ✅ Current Status: Phase 2.7 Complete - Verifiable Storage Integration & Multi-Chain MVP
 
-The frontend is feature-complete for the MVP. The entire user journey—from creating a pact to distributing funds—is fully implemented and tested on both the **Filecoin Calibration** and **Flow EVM** testnets.
+The frontend is feature-complete for the MVP, including advanced verifiable storage functionality. The entire user journey—from creating a pact to distributing funds—is fully implemented and tested on both the **Filecoin Calibration** and **Flow EVM** testnets.
 
-- **Pact Creation:** A unified form at `/dashboard/create` allows users to create and fund both **Prize Pool** and **Milestone** pacts, including the secure upload of terms to IPFS.
+- **Pact Creation:** A unified form at `/dashboard/create` allows users to create and fund both **Prize Pool** and **Milestone** pacts, including the secure upload of terms to IPFS. On Filecoin Calibration, users can enable verifiable storage via Synapse SDK.
+- **Verifiable Storage Integration:** Successfully integrated Synapse SDK for Filecoin storage deal verification. Users can create verifiable pacts that upload content to Filecoin and require active storage deals for payouts, with optional funder override capabilities.
 - **Pact Browsing:** The homepage (`/`) displays all created pacts by fetching on-chain event data.
-- **Pact Detailing:** The dynamic detail page (`/dashboard/pact/[id]`) shows comprehensive on-chain data and the full agreement terms from IPFS.
-- **Fund Distribution:** The UI provides conditional actions, allowing funders to release milestone payments or distribute prize pool funds to multiple recipients after the time lock has expired.
+- **Pact Detailing:** The dynamic detail page (`/dashboard/pact/[id]`) shows comprehensive on-chain data, the full agreement terms from IPFS, and real-time verifiable storage status when applicable.
+- **Fund Distribution:** The UI provides conditional actions, allowing funders to release milestone payments or distribute prize pool funds to multiple recipients after the time lock has expired. For verifiable pacts, includes storage deal verification with optional bypass.
 - **Chain-Aware UI:** The entire application is now multi-chain aware. The `Web3Context` provides network-specific details (contract addresses, token symbols, decimals), and all components—from the creation form to the pact cards and detail pages—dynamically update to show the correct information for the connected network.
 - **Dashboard Layout:** The application has been migrated to a robust dashboard structure. A persistent sidebar provides clear navigation, and a global layout enforces user authentication and connection to a supported network before rendering any sensitive content.
+- **Enhanced Reliability:** Implemented retry mechanisms for improved transaction reliability on Filecoin Calibration Testnet.
 
 ## 📈 Next Steps: Final Polish & Submission Prep
 

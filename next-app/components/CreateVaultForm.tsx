@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { useWeb3 } from '@/lib/contexts/Web3Context';
+import { Synapse, CONTRACT_ADDRESSES } from '@filoz/synapse-sdk';
 import { useTokenBalances } from '@/lib/hooks/useTokenBalances';
 import { PinataSDK } from 'pinata';
 import Erc20Abi from '@/lib/abi/Erc20.json';
+// Using console.log/error instead of toast since react-toastify isn't installed
 
 const pinata = new PinataSDK({});
 
@@ -15,7 +17,12 @@ type VaultType = "PrizePool" | "Milestone";
 
 export default function CreateVaultForm() {
     const router = useRouter();
-    const { signer, vaultFactoryContract, activeChainConfig } = useWeb3();
+    const {
+        vaultFactoryContract,
+        activeChainConfig,
+        signer, // Necessary for Synapse SDK initialization
+        provider // Also necessary for Synapse SDK initialization
+    } = useWeb3();
     const { nativeToken, escrowToken, isLoading: isLoadingBalances, error: balanceError, hasSufficientBalances, refreshBalances } = useTokenBalances(); 
 
     // UPDATED: Initial state is now "PrizePool"
@@ -58,12 +65,82 @@ export default function CreateVaultForm() {
     const [statusMessage, setStatusMessage] = useState('');
     const [error, setError] = useState('');
 
+    // Synapse integration states
+    const [useVerifiableStorage, setUseVerifiableStorage] = useState(false);
+    const [synapseProofSetId, setSynapseProofSetId] = useState<string | null>(null);
+    const [funderCanOverrideVerification, setFunderCanOverrideVerification] = useState(false); // Default to false
+    const [isSynapseSetupComplete, setIsSynapseSetupComplete] = useState(false);
+    const [synapseLoading, setSynapseLoading] = useState(false);
+    const [synapseProgressMessage, setSynapseProgressMessage] = useState('');
+    // This will hold the raw file content as a Uint8Array, suitable for Synapse upload
+    const [uploadedIpfsContent, setUploadedIpfsContent] = useState<Uint8Array | null>(null);
+    // State to hold the File object for Synapse upload
+    const [pactContentFile, setPactContentFile] = useState<File | null>(null);
+    // State to hold the Synapse SDK instance
+    const [synapseSdk, setSynapseSdk] = useState<Synapse | null>(null);
+
+    // Determine if the current chain is Filecoin Calibration Testnet
+    const isOnCalibrationTestnet = useMemo(() => {
+        // Chain ID for Filecoin Calibration is "0x4cb2f" (314159 in decimal)
+        return activeChainConfig?.chainId === "0x4cb2f";
+    }, [activeChainConfig]);
+
+    // Async Initialization Pattern: Use useEffect to await Synapse.create()
+    useEffect(() => {
+        async function initSynapseSdk() {
+
+
+            if (isOnCalibrationTestnet && signer && provider) {
+                try {
+                    // Pass only provider for browser/MetaMask usage (not both signer and provider)
+                    const sdk = await Synapse.create({ provider });
+                    setSynapseSdk(sdk);
+                } catch (error) {
+                    console.error("❌ Failed to initialize Synapse SDK:", error);
+                    setSynapseSdk(null); // Ensure state is null on error
+                }
+                            } else {
+                setSynapseSdk(null); // Clear Synapse SDK if not on Calibration or if signer/provider are not ready
+            }
+        }
+        initSynapseSdk();
+    }, [isOnCalibrationTestnet, signer, provider]); // Re-run when these dependencies change
+
     useEffect(() => {
         if (activeChainConfig) {
             setTokenAddress(activeChainConfig.primaryCoin.address);
             setIsApproved(false); // Reset approval when network changes
         }
     }, [activeChainConfig]);
+
+    // This useEffect is crucial for getting the raw content of the file
+    // that the user selects for IPFS and making it available for Synapse upload.
+    useEffect(() => {
+        if (pactContentFile instanceof File) { 
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (e.target?.result) {
+                    // Read the file as an ArrayBuffer and convert to Uint8Array
+                    setUploadedIpfsContent(new Uint8Array(e.target.result as ArrayBuffer));
+                }
+            };
+            reader.readAsArrayBuffer(pactContentFile); // Read the file's content
+        } else {
+            setUploadedIpfsContent(null); // Clear if no file is selected
+        }
+    }, [pactContentFile]); // Depend on pactContentFile changing
+
+    // Create content for Synapse upload (from either PDF or terms text)
+    const synapseUploadContent = useMemo(() => {
+        if (uploadedIpfsContent) {
+            // Use uploaded PDF content
+            return uploadedIpfsContent;
+        } else if (terms.trim()) {
+            // Use terms text as content
+            return new TextEncoder().encode(terms);
+        }
+        return null;
+    }, [uploadedIpfsContent, terms]);
 
     const amountToApprove = useMemo(() => {
         if (!activeChainConfig) return 0n;
@@ -79,6 +156,129 @@ export default function CreateVaultForm() {
     }, [vaultType, totalAmount, milestoneAmounts, activeChainConfig]);
 
     const needsApproval = amountToApprove > 0n;
+
+    // Helper function to safely access properties from unknown objects
+    const safeAccess = (obj: unknown, prop: string): string => {
+        if (obj && typeof obj === 'object' && prop in obj) {
+            const value = (obj as Record<string, unknown>)[prop];
+            return value !== null && value !== undefined ? String(value) : 'unknown';
+        }
+        return 'unknown';
+    };
+
+    // Function to check if Synapse setup is complete
+    const checkSynapseSetupStatus = useCallback(async () => {
+        if (!synapseSdk || !isOnCalibrationTestnet) {
+            return false;
+        }
+
+        setSynapseLoading(true);
+        setSynapseProgressMessage("Checking Synapse setup status...");
+
+        try {
+            // Check if we have sufficient funds deposited
+            const accountInfo = await synapseSdk.payments.accountInfo();
+            const minRequiredBalance = ethers.parseUnits("1", 6); // 1 USDFC minimum
+            
+            if (accountInfo.availableFunds < minRequiredBalance) {
+                return false;
+            }
+
+            // Check if Pandora service is approved
+            const currentNetwork = synapseSdk.getNetwork() as keyof typeof CONTRACT_ADDRESSES.PANDORA_SERVICE;
+            const pandoraAddress = CONTRACT_ADDRESSES.PANDORA_SERVICE[currentNetwork];
+            
+            const serviceApprovalStatus = await synapseSdk.payments.serviceApproval(pandoraAddress);
+            
+            if (!serviceApprovalStatus.isApproved) {
+                return false;
+            }
+
+            // If we get here, setup is complete
+            setIsSynapseSetupComplete(true);
+            return true;
+
+        } catch (error) {
+            console.error("❌ Error checking Synapse setup:", error);
+            return false;
+        } finally {
+            setSynapseLoading(false);
+            setSynapseProgressMessage('');
+        }
+    }, [synapseSdk, isOnCalibrationTestnet]);
+
+    // Auto-check Synapse setup status when conditions are met
+    useEffect(() => {
+        if (useVerifiableStorage && synapseSdk && isOnCalibrationTestnet && !isSynapseSetupComplete) {
+            checkSynapseSetupStatus();
+        }
+    }, [useVerifiableStorage, synapseSdk, isOnCalibrationTestnet, isSynapseSetupComplete, checkSynapseSetupStatus]);
+
+    // Function to handle Synapse payment setup (redirect to external setup)
+    const handleSynapsePaymentSetup = useCallback(() => {
+        if (!isOnCalibrationTestnet) {
+            setError("Synapse setup is only available on Filecoin Calibration Testnet.");
+            return;
+        }
+
+        // Open the external Synapse setup URL in a new tab
+        window.open('https://fs-upload-dapp.netlify.app/', '_blank', 'noopener,noreferrer');
+    }, [isOnCalibrationTestnet]); // Dependencies for useCallback
+
+    // Function to handle content upload to Filecoin via Synapse
+    const handleSynapseContentUpload = useCallback(async () => {
+        // Ensure Synapse SDK is ready, we have content, and we are on Calibration
+        if (!synapseSdk || !synapseUploadContent || !isOnCalibrationTestnet) {
+            console.error("Synapse SDK not ready, no content available for upload, or not on Filecoin Calibration.");
+            return;
+        }
+        // Ensure Synapse setup is complete before attempting upload
+        if (!isSynapseSetupComplete) {
+            console.error("Please complete the Synapse payment setup first.");
+            return;
+        }
+
+        setSynapseLoading(true);
+        setSynapseProgressMessage("Uploading content to Filecoin via Synapse...");
+        setSynapseProofSetId(null); // Clear any previous proofSetId
+
+        try {
+            // Create a storage service instance. This handles provider selection and proof set management.
+            const storage = await synapseSdk.createStorage({
+                callbacks: {
+                    onProviderSelected: (provider: unknown) => setSynapseProgressMessage(`Selected storage provider: ${safeAccess(provider, 'owner')}`),
+                    onProofSetResolved: (info: unknown) => setSynapseProgressMessage(`Proof set resolved: ${safeAccess(info, 'proofSetId')} (Existing: ${safeAccess(info, 'isExisting') === 'true' ? 'Yes' : 'No'})`),
+                    onProofSetCreationStarted: (tx: unknown) => setSynapseProgressMessage(`Proof set creation initiated. Tx Hash: ${safeAccess(tx, 'hash')}`),
+                    onProofSetCreationProgress: (status: unknown) => setSynapseProgressMessage(`Proof set creation progress: Mined: ${safeAccess(status, 'transactionMined') === 'true' ? 'Yes' : 'No'}, Live: ${safeAccess(status, 'proofSetLive') === 'true' ? 'Yes' : 'No'}`),
+                }
+            });
+
+            // Upload the raw content (Uint8Array) to the storage service.
+            // The Synapse SDK handles underlying Filecoin Piece Commitment (CommP) and size constraints.
+            await storage.upload(synapseUploadContent, {
+                onUploadComplete: (commp: unknown) => setSynapseProgressMessage(`Content uploaded! CommP: ${commp}`),
+                onRootAdded: (tx: unknown) => tx && setSynapseProgressMessage(`Root added to proof set. Tx Hash: ${safeAccess(tx, 'hash')}`),
+                onRootConfirmed: (rootIds: unknown) => setSynapseProgressMessage(`Root IDs confirmed: ${Array.isArray(rootIds) ? rootIds.join(', ') : 'unknown'}`),
+            });
+
+            // The proofSetId from the storage service is what we need to store on-chain.
+            if (storage.proofSetId !== undefined) {
+                setSynapseProofSetId(storage.proofSetId); // Store the proof set ID
+            } else {
+                // This case should ideally not happen if upload is successful
+                throw new Error("Synapse upload successful but proofSetId was not returned from storage service.");
+            }
+
+        } catch (error: unknown) {
+            console.error("Synapse content upload failed:", error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            setError(`Synapse content upload failed: ${errorMessage}`);
+            setSynapseProofSetId(null); // Clear proofSetId on failure
+        } finally {
+            setSynapseLoading(false);
+            setSynapseProgressMessage('');
+        }
+    }, [synapseSdk, synapseUploadContent, isOnCalibrationTestnet, isSynapseSetupComplete]); // Dependencies for useCallback
 
     const handleApprove = async () => {
         if (!signer || !tokenAddress || !activeChainConfig?.contractAddress) {
@@ -107,7 +307,10 @@ export default function CreateVaultForm() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setPactContentFile(file); // Set the File object for Synapse useEffect
             handlePdfUpload(file);
+        } else {
+            setPactContentFile(null);
         }
     };
 
@@ -130,7 +333,7 @@ export default function CreateVaultForm() {
             const uploadResult = await pinata.upload.public.file(file).url(signedUrl);
             const cid = uploadResult.cid;
             
-            console.log("PDF uploaded with CID:", cid);
+
             setPdfCid(cid);
             setUploadStatus(`✓ PDF uploaded!`);
         } catch (err) {
@@ -141,6 +344,67 @@ export default function CreateVaultForm() {
         } finally {
             setIsUploadingPdf(false);
         }
+    };
+
+    // Helper function to execute transaction with retry logic
+    const executeTransactionWithRetry = async <T extends { wait(): Promise<unknown>; hash?: string }>(
+        method: string,
+        args: unknown[], 
+        maxRetries = 3
+    ): Promise<T> => {
+        let lastError: unknown;
+        const MAX_RETRIES = maxRetries;
+        let attempts = 0;
+        
+        while (attempts < MAX_RETRIES) {
+            attempts++;
+            try {
+                if (!vaultFactoryContract) {
+                    throw new Error("Vault factory contract not available");
+                }
+                
+                // Get the contract method and send the transaction
+                const contractMethod = (vaultFactoryContract as Record<string, (...args: unknown[]) => Promise<T>>)[method];
+                if (!contractMethod) {
+                    throw new Error(`Method ${method} not found on contract`);
+                }
+                
+                setStatusMessage(attempts > 1 ? `Sending transaction (attempt ${attempts}/${MAX_RETRIES})...` : "Sending transaction...");
+                const tx = await contractMethod(...args);
+                
+                return tx; // Success, return the transaction
+                
+            } catch (error: unknown) {
+                lastError = error;
+                console.error(`Transaction attempt ${attempts} failed:`, error);
+                
+                // Check if it's a retryable network error
+                const isRetryableError = (
+                    (error && typeof error === 'object' && 'code' in error && (
+                        (error as { code: string | number }).code === 'UNKNOWN_ERROR' || 
+                        (error as { code: string | number }).code === -32603
+                    )) ||
+                    (error && typeof error === 'object' && 'message' in error && (
+                        (error as { message: string }).message?.includes('Internal JSON-RPC error') ||
+                        (error as { message: string }).message?.includes('network error') ||
+                        (error as { message: string }).message?.includes('timeout') ||
+                        (error as { message: string }).message?.includes('could not coalesce error')
+                    ))
+                );
+                
+                // If it's the last attempt or not a retryable error, break the loop
+                if (attempts >= MAX_RETRIES || !isRetryableError) {
+                    break;
+                }
+                
+                // Wait before retrying (exponential backoff: 2s, 4s, 6s)
+                const delay = 2000 * attempts;
+                setStatusMessage(`Network error detected. Retrying in ${delay / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        
+        throw lastError; // Throw the last error if all attempts failed
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -159,11 +423,25 @@ export default function CreateVaultForm() {
         setIsCreating(true);
 
         try {
+            // Pre-submission check for verifiable vaults on Calibration
+            if (isOnCalibrationTestnet && useVerifiableStorage) {
+                if (!isSynapseSetupComplete) {
+                    setError("Please complete the Synapse payment setup before creating a verifiable vault.");
+                    setIsCreating(false);
+                    return;
+                }
+                if (synapseProofSetId === null) {
+                    setError("Please upload your content to Filecoin via Synapse before creating a verifiable vault.");
+                    setIsCreating(false);
+                    return;
+                }
+            }
+
             // IPFS upload logic
             setStatusMessage("Uploading agreement to IPFS...");
             const ipfsData = vaultType === 'Milestone' 
-                ? { beneficiary, tokenAddress, terms, vaultType, pdfCid }
-                : { tokenAddress, terms, vaultType, pdfCid };
+                ? { beneficiary, tokenAddress, terms, vaultType, pdfCid, useVerifiableStorage, synapseProofSetId, funderCanOverrideVerification }
+                : { tokenAddress, terms, vaultType, pdfCid, useVerifiableStorage, synapseProofSetId, funderCanOverrideVerification };
             const jsonFile = new File([JSON.stringify(ipfsData)], "vault-terms.json", { type: "application/json" });
             
             const urlRequest = await fetch("/api/upload");
@@ -176,8 +454,38 @@ export default function CreateVaultForm() {
             
             let tx;
             if (vaultType === "PrizePool") {
-                setStatusMessage("Sending transaction to create Prize Pool Vault...");
-                tx = await vaultFactoryContract.createPrizePoolVault(tokenAddress, amountToApprove, releaseTimestamp, termsCID);
+                // Check if using verifiable storage and we have VaultFactoryVerifiable contract
+                if (isOnCalibrationTestnet && useVerifiableStorage) {
+                    
+                    // For verifiable vaults on Filecoin Calibration - assuming VaultFactoryVerifiable contract
+                    tx = await executeTransactionWithRetry(
+                        "createPrizePoolVault",
+                        [
+                            tokenAddress, 
+                            amountToApprove, 
+                            releaseTimestamp, 
+                            termsCID,
+                            true, // isVerifiable: true
+                            synapseProofSetId!, // synapseProofSetId: guaranteed non-null by check above
+                            funderCanOverrideVerification // funderCanOverrideVerification
+                        ]
+                    );
+                } else {
+                    
+                    // For Flow EVM (always non-verifiable) or non-verifiable vaults on Calibration
+                    tx = await executeTransactionWithRetry(
+                        "createPrizePoolVault",
+                        [
+                            tokenAddress, 
+                            amountToApprove, 
+                            releaseTimestamp, 
+                            termsCID,
+                            false, // isVerifiable: false
+                            0,     // synapseProofSetId: 0 (or any default number for a non-verifiable vault)
+                            false  // funderCanOverrideVerification: false (as it's not applicable)
+                        ]
+                    );
+                }
             } else {
                 if (!ethers.isAddress(beneficiary)) {
                     setError("A valid beneficiary address is required for Milestone vaults.");
@@ -185,8 +493,37 @@ export default function CreateVaultForm() {
                     return;
                 }
                 const payouts = milestoneAmounts.split(',').map(amt => ethers.parseUnits(amt.trim(), activeChainConfig.primaryCoin.decimals));
-                setStatusMessage("Sending transaction to create Milestone Vault...");
-                tx = await vaultFactoryContract.createMilestoneVault(beneficiary, tokenAddress, payouts, termsCID);
+                
+                // Check if using verifiable storage and we have VaultFactoryVerifiable contract
+                if (isOnCalibrationTestnet && useVerifiableStorage) {
+                    // For verifiable vaults on Filecoin Calibration - assuming VaultFactoryVerifiable contract
+                    tx = await executeTransactionWithRetry(
+                        "createMilestoneVault",
+                        [
+                            beneficiary, 
+                            tokenAddress, 
+                            payouts, 
+                            termsCID,
+                            true, // isVerifiable: true
+                            synapseProofSetId!, // synapseProofSetId: guaranteed non-null by check above
+                            funderCanOverrideVerification // funderCanOverrideVerification
+                        ]
+                    );
+                } else {
+                    // For Flow EVM (always non-verifiable) or non-verifiable vaults on Calibration
+                    tx = await executeTransactionWithRetry(
+                        "createMilestoneVault",
+                        [
+                            beneficiary, 
+                            tokenAddress, 
+                            payouts, 
+                            termsCID,
+                            false, // isVerifiable: false
+                            0,     // synapseProofSetId: 0 (or any default number for a non-verifiable vault)
+                            false  // funderCanOverrideVerification: false (as it's not applicable)
+                        ]
+                    );
+                }
             }
 
             await tx.wait();
@@ -195,7 +532,51 @@ export default function CreateVaultForm() {
 
         } catch (err: unknown) {
             console.error("Error creating vault:", err);
-            setError((err as { reason: string }).reason || "An error occurred creating the vault.");
+            
+            // Check for specific verifiable storage error
+            if (err && typeof err === 'object' && 'data' in err && (err as { data: string }).data === '0x4850d37b') {
+                setError("Verifiable storage is not yet configured on this chain. The contract owner needs to set the PDPVerifier address first.");
+            } else if (err && typeof err === 'object') {
+                // Handle different types of errors more gracefully
+                const errorObj = err as { 
+                    code?: string | number; 
+                    message?: string; 
+                    reason?: string; 
+                };
+                
+                // Network/RPC related errors that are often retryable
+                if (errorObj.code === 'UNKNOWN_ERROR' || 
+                    errorObj.code === -32603 || 
+                    errorObj.message?.includes('Internal JSON-RPC error') ||
+                    errorObj.message?.includes('network error') ||
+                    errorObj.message?.includes('timeout')) {
+                    setError("Network error occurred. This is often temporary on testnets. Please try again in a few moments.");
+                } 
+                // Gas estimation errors
+                else if (errorObj.code === 'UNPREDICTABLE_GAS_LIMIT' || 
+                         errorObj.message?.includes('gas') ||
+                         errorObj.message?.includes('Gas')) {
+                    setError("Gas estimation failed. Please check your token balances and try again. If the issue persists, try increasing your gas limit manually.");
+                }
+                // User rejected transaction
+                else if (errorObj.code === 4001 || errorObj.code === 'ACTION_REJECTED') {
+                    setError("Transaction was rejected. Please try again and confirm the transaction in your wallet.");
+                }
+                // Contract execution errors
+                else if (errorObj.reason) {
+                    setError(`Contract error: ${errorObj.reason}`);
+                }
+                // Generic error with message
+                else if (errorObj.message) {
+                    setError(`Transaction failed: ${errorObj.message}. If this is a network error, please try again.`);
+                }
+                // Fallback
+                else {
+                    setError("An error occurred creating the vault. If this appears to be a network issue, please try again.");
+                }
+            } else {
+                setError("An error occurred creating the vault. Please try again.");
+            }
             setStatusMessage('');
         } finally {
             setIsCreating(false);
@@ -249,6 +630,122 @@ export default function CreateVaultForm() {
                     {uploadStatus && <p className="mt-1 text-foreground/80">{uploadStatus}</p>}
                 </div>
             </div>
+
+            {/* Conditional section for Synapse Verifiable Storage, only visible on Filecoin Calibration */}
+            {isOnCalibrationTestnet && (
+                <div className="space-y-4 p-4 border border-muted rounded-md bg-background/50">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+                            checked={useVerifiableStorage}
+                            onChange={(e) => {
+                                setUseVerifiableStorage(e.target.checked);
+                                // Reset Synapse-related states if the checkbox is unchecked
+                                if (!e.target.checked) {
+                                    setIsSynapseSetupComplete(false);
+                                    setSynapseProofSetId(null);
+                                    setSynapseProgressMessage('');
+                                    setFunderCanOverrideVerification(false);
+                                }
+                            }}
+                        />
+                        <span className="text-lg font-semibold text-foreground">
+                            Use Verifiable Storage (Filecoin via Synapse)
+                        </span>
+                    </label>
+
+                    {useVerifiableStorage && (
+                        <div className="space-y-4 mt-4">
+                            <p className="text-sm text-muted-foreground">
+                                This option requires your vault content to be verifiably stored on Filecoin via Synapse.
+                                Payouts will be conditional on the proof set being &quot;live&quot; unless overridden.
+                            </p>
+
+                            {/* Synapse Payment Setup Button */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={handleSynapsePaymentSetup}
+                                    disabled={synapseLoading || isSynapseSetupComplete}
+                                    className={`${buttonStyles} ${
+                                        isSynapseSetupComplete
+                                            ? 'bg-green-600 text-white cursor-not-allowed'
+                                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                    } ${disabledStyles}`}
+                                >
+                                    {isSynapseSetupComplete ? 'Synapse Setup Complete' : 'Setup Synapse Payments'}
+                                </button>
+                                {!isSynapseSetupComplete && (
+                                    <button
+                                        type="button"
+                                        onClick={checkSynapseSetupStatus}
+                                        disabled={synapseLoading || !synapseSdk}
+                                        className={`${buttonStyles} bg-blue-600 text-white hover:bg-blue-700 ${disabledStyles}`}
+                                    >
+                                        {synapseLoading ? 'Checking...' : 'Check Setup Status'}
+                                    </button>
+                                )}
+                                {isSynapseSetupComplete && <span className="text-green-500">✅ Synapse payments are configured!</span>}
+                            </div>
+
+                            {/* Synapse Content Upload Button */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={handleSynapseContentUpload}
+                                    disabled={synapseLoading || !isSynapseSetupComplete || !synapseUploadContent || synapseProofSetId !== null}
+                                    className={`${buttonStyles} ${
+                                        synapseProofSetId !== null
+                                            ? 'bg-green-600 text-white cursor-not-allowed'
+                                            : 'bg-accent text-accent-foreground hover:bg-accent/80'
+                                    } ${disabledStyles}`}
+                                >
+                                    {synapseProofSetId !== null ? 'Content Uploaded to Filecoin' : 'Upload Content to Filecoin'}
+                                </button>
+                                {synapseProofSetId !== null && (
+                                    <span className="text-green-500">
+                                        ✅ Proof Set ID: <span className="font-mono bg-muted px-2 py-1 rounded text-sm">{synapseProofSetId}</span>
+                                    </span>
+                                )}
+                                {!synapseUploadContent && isSynapseSetupComplete && (
+                                    <span className="text-sm text-muted-foreground">
+                                        Please fill in the Terms field or upload a PDF to enable content upload.
+                                    </span>
+                                )}
+                            </div>
+
+                            {synapseLoading && (
+                                <p className="text-yellow-500 animate-pulse text-sm">
+                                    {synapseProgressMessage || 'Processing Synapse operation...'}
+                                </p>
+                            )}
+
+                            {/* Status message when setup is incomplete */}
+                            {!isSynapseSetupComplete && !synapseLoading && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    If you&apos;ve already completed setup at <a href="https://fs-upload-dapp.netlify.app/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 underline">fs-upload-dapp.netlify.app</a>, click &quot;Check Setup Status&quot; to verify.
+                                </p>
+                            )}
+
+                            {/* Funder Override Option (only shown after content is uploaded) */}
+                            {synapseProofSetId !== null && (
+                                <label className="flex items-center space-x-2 cursor-pointer mt-4">
+                                    <input
+                                        type="checkbox"
+                                        className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+                                        checked={funderCanOverrideVerification}
+                                        onChange={(e) => setFunderCanOverrideVerification(e.target.checked)}
+                                    />
+                                    <span className="text-sm text-muted-foreground">
+                                        Allow Funder to Override Verification (Payouts possible even if Filecoin proof is not live)
+                                    </span>
+                                </label>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* UPDATED: Renamed to PrizePool */}
             {vaultType === "PrizePool" ? (
@@ -381,9 +878,25 @@ export default function CreateVaultForm() {
                 </div>
             )}
            
-            <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances} className={`${buttonStyles} w-full bg-primary text-primary-foreground ${disabledStyles}`}>
+            <button type="submit" disabled={isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances || (isOnCalibrationTestnet && useVerifiableStorage && (synapseProofSetId === null || !isSynapseSetupComplete))} className={`${buttonStyles} w-full bg-primary text-primary-foreground ${disabledStyles}`}>
                 {isCreating ? 'Creating Vault...' : 'Create Vault'}
             </button>
+
+            {/* Debug: Show why Create Vault button is disabled - Hidden for chains that prefer sleeker UI */}
+            {(isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances || (isOnCalibrationTestnet && useVerifiableStorage && (synapseProofSetId === null || !isSynapseSetupComplete))) && activeChainConfig?.showDetailedErrors && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm font-medium text-yellow-700">Create Vault button is disabled because:</p>
+                    <ul className="mt-1 text-sm text-yellow-600">
+                        {isCreating && <li>• Vault creation is in progress</li>}
+                        {isApproving && <li>• Token approval is in progress</li>}
+                        {needsApproval && !isApproved && !isApproving && <li>• Token approval is required but not completed</li>}
+                        {isUploadingPdf && <li>• PDF upload is in progress</li>}
+                        {!hasSufficientBalances && <li>• Insufficient token balances</li>}
+                        {isOnCalibrationTestnet && useVerifiableStorage && synapseProofSetId === null && <li>• Content must be uploaded to Filecoin first {synapseLoading ? '(Content Upload in Progress)' : '(synapseProofSetId is null)'}</li>}
+                        {isOnCalibrationTestnet && useVerifiableStorage && !isSynapseSetupComplete && <li>• Synapse setup is not complete</li>}
+                    </ul>
+                </div>
+            )}
 
             {statusMessage && <p className="text-center text-sm text-green-400">{statusMessage}</p>}
             {error && <p className="text-center text-sm text-red-500">{error}</p>}
