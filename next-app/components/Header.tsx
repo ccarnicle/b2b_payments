@@ -9,7 +9,7 @@ import NetworkSwitcher from '@/components/NetworkSwitcher';
 
 // A good practice is to define a component for the logo
 const Logo = () => (
-  <Link href="/" className="flex items-center">
+  <Link href="/" className="flex items-center pr-2 sm:pr-0">
     <Image
       src="/smart_pacts_logo_landscape.png"
       alt="Pact Landscape Logo"
@@ -45,7 +45,10 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const truncateAddress = (address: string) => {
+  const truncateAddress = (address: string, isSmallScreen: boolean = false) => {
+    if (isSmallScreen) {
+      return `${address.slice(0, 4)}..${address.slice(-2)}`;
+    }
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
@@ -56,9 +59,14 @@ export default function Header() {
         <nav className="flex items-center space-x-2">
           <Link 
             href={isOnDashboard ? "/" : "/dashboard/create"} 
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md text-xs md:text-sm font-medium"
           >
-            {isOnDashboard ? "Home" : "Launch App"}
+            {isOnDashboard ? "Home" : (
+              <>
+                <span className="sm:hidden">Launch</span>
+                <span className="hidden sm:inline">Launch App</span>
+              </>
+            )}
           </Link>
           
           {authenticated && account ? (
@@ -67,9 +75,10 @@ export default function Header() {
               <div className="relative" ref={profileDropdownRef}>
                 <button
                   onClick={toggleProfileDropdown}
-                  className="bg-secondary hover:bg-secondary/50 text-foreground px-3 py-2 rounded-full text-sm font-mono flex items-center gap-2 transition-colors"
+                  className="bg-secondary hover:bg-secondary/50 text-foreground px-2 md:px-3 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-mono flex items-center gap-1 md:gap-2 transition-colors"
                 >
-                  {truncateAddress(account)}
+                  <span className="md:hidden">{truncateAddress(account, true)}</span>
+                  <span className="hidden md:inline">{truncateAddress(account)}</span>
                   <ChevronDown />
                 </button>
                 {showProfileDropdown && (

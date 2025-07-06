@@ -15,6 +15,7 @@ Our solution is **Smart Escrow Vaults** — a modular system for milestone-based
 -   **Blockchain:** Filecoin Calibration & Flow EVM Testnet
 -   **Token:** USDFC (Filecoin) & WFLOW (Flow)
 -   **Storage:** IPFS via Pinata (using the Signed URL pattern)
+-   **Verifiable Storage:** Synapse SDK for Filecoin storage deal verification
 -   **Authentication:** Privy (for walletless UX)
 
 ## 📂 Repository Structure
@@ -46,11 +47,11 @@ b2b_payments/
     │   ├── dashboard/
     │   │   ├── active/
     │   │   │   └── page.tsx         # Active pacts dashboard
-    │   │   ├── create/
+    │   ├── create/
     │   │   │   └── page.tsx         # Create new pact
-    │   │   └── pact/
-    │   │       └── [id]/
-    │   │           └── page.tsx     # Pact detail page
+    │   ├── pact/
+    │   │   └── [id]/
+    │   │       └── page.tsx     # Pact detail page
     │   └── page.tsx                 # Homepage
     ├── components/
     │   └── CreateVaultForm.tsx     # Component with IPFS upload logic
@@ -65,12 +66,14 @@ b2b_payments/
     └── package.json
 ```
 
-## ✅ Current Status: Phase 3 Complete - Multi-Chain MVP Live
+## ✅ Current Status: Phase 2 Complete - Verifiable Storage & Multi-Chain MVP Live
 The core functionality of the application is feature-complete and has been tested end-to-end on both the **Filecoin Calibration** and **Flow EVM** testnets.
 
 - **Dual Pact System:** The smart contract supports two distinct use cases: **1-to-many Prize Pools** for hackathons and **1-to-1 Milestone grants** for freelance work.
 - **End-to-End Flow:** Users can successfully create a pact, fund it, have the terms stored on IPFS, view all pacts on a homepage, see detailed information on a dedicated page, and distribute funds as the funder.
-- **New! Multi-Chain Support:** The application now seamlessly supports both the **Filecoin Calibration** and **Flow EVM** testnets. The UI is chain-aware, dynamically updating token symbols (USDFC/WFLOW), decimals, and contract addresses based on the connected network.
+- **Multi-Chain Support:** The application now seamlessly supports both the **Filecoin Calibration** and **Flow EVM** testnets. The UI is chain-aware, dynamically updating token symbols (USDFC/WFLOW), decimals, and contract addresses based on the connected network.
+- **Verifiable Storage Integration:** Successfully integrated Synapse SDK for Filecoin storage deal verification. On Filecoin Calibration, users can create verifiable pacts that require active storage deals for payouts, with optional funder override capabilities.
+- **Enhanced Contract Architecture:** Deployed `VaultFactoryVerifiable.sol` with conditional verification logic, gas-optimized storage packing, and chain-specific PDPVerifier configuration.
 - **Polished Frontend Foundation:** The application features a custom color palette, typography, and robust state management for all user interactions.
 - **Dashboard & Authentication:** The application has been refactored into a secure dashboard layout. All sensitive pages now require wallet authentication and enforce connection to a supported blockchain network.
 - **Deployment Ready:** The application is configured for Vercel deployment with contract artifacts properly copied to the `next-app/lib/abi/` directory to resolve cross-directory import issues.
@@ -101,12 +104,7 @@ The application is configured for Vercel deployment with `next-app/` as the root
 
 ## 🚀 Hackathon Roadmap
 
-### **Phase 3 (Complete) - Multi-Chain Integration**
-- [x] **UI Overhaul:** Refactor the application into a dashboard layout with a dedicated landing page.
-- [x] **Flow EVM Deployment:** Deploy the `VaultFactory` contract to the Flow EVM Testnet.
-- [x] **Multi-Chain Integration:** Implement a network context and UI switcher to allow users to toggle between Filecoin and Flow networks.
-
-### **Finally: Phase 4 (Day 9) - Submission**
+### **Phase 4 (Day 9) - Submission**
 - [ ] Record the final demo video showcasing both use cases and multi-chain functionality.
 - [ ] Finalize all documentation.
 - [ ] Triple-check all submission requirements and submit the project.

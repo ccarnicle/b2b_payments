@@ -7,24 +7,23 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="py-2">
         <div className="container mx-auto px-6">
-          <div className="bg-primary text-primary-foreground rounded-2xl p-12 grid md:grid-cols-5 gap-12 items-center">
-            <div className="space-y-6 md:col-span-3">
-              <p className="font-semibold text-secondary-foreground">Pact for Independent Creators</p>
-              <h1 className="text-5xl font-bold font-display tracking-tight leading-relaxed">
+          <div className="bg-primary text-primary-foreground rounded-2xl p-12 grid lg:grid-cols-5 gap-12 items-center">
+            <div className="space-y-6 lg:col-span-3 text-center lg:text-left">
+              <h1 className="text-3xl sm:text-5xl font-bold font-display tracking-tight leading-normal sm:leading-relaxed">
                 Payments, simplified.
                 <br />
                 Work, empowered.
               </h1>
-              <ul className="space-y-3 text-lg">
-                <li className="flex items-center">
+              <ul className="space-y-3 text-base sm:text-lg">
+                <li className="flex items-center justify-center lg:justify-start">
                   <span className="mr-3">✅</span>
                   Trustless, onchain agreements
                 </li>
-                <li className="flex items-center">
+                <li className="flex items-center justify-center lg:justify-start">
                   <span className="mr-3">✅</span>
                   Milestone-based payouts
                 </li>
-                <li className="flex items-center">
+                <li className="flex items-center justify-center lg:justify-start">
                   <span className="mr-3">✅</span>
                   Terms secured on Filecoin
                 </li>
@@ -32,13 +31,13 @@ export default function LandingPage() {
               <div className="text-center lg:text-left">
                 <Link
                   href="/dashboard/active"
-                  className="inline-block bg-accent text-accent-foreground font-bold py-3 px-8 rounded-lg text-lg hover:bg-opacity-90 transition-colors shadow-lg hover:shadow-xl"
+                  className="inline-block bg-accent text-accent-foreground font-bold py-3 px-8 rounded-lg text-base sm:text-lg hover:bg-opacity-90 transition-colors shadow-lg hover:shadow-xl"
                 >
                   Launch App
                 </Link>
               </div>
             </div>
-            <div className="hidden md:flex justify-center items-center md:col-span-2">
+            <div className="hidden lg:flex justify-center items-center lg:col-span-2">
               <div className="w-full max-w-md h-80 overflow-hidden rounded-xl shadow-2xl relative">
                 <Image 
                   src="/hero_image.svg" 
@@ -53,8 +52,8 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Cards Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-6 grid md:grid-cols-3 gap-8 text-center">
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-6 grid lg:grid-cols-3 gap-8 text-center">
           {/* Card 1 */}
           <div className="bg-card border border-muted p-8 rounded-xl shadow-lg">
             <div className="text-5xl mb-4">💡</div>
@@ -118,7 +117,7 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-24 bg-background">
+      <section className="py-20 bg-background">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold mb-6">Join the Future of Decentralized Work.</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-8">

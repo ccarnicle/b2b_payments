@@ -56,7 +56,7 @@ export default function NetworkSwitcher() {
         {activeChainConfig.logo && (
           <Image src={activeChainConfig.logo} alt={`${activeChainConfig.name} logo`} width={20} height={20} className="rounded-full" />
         )}
-        <span>{activeChainConfig.name}</span>
+        <span className="hidden md:inline">{activeChainConfig.name}</span>
         <ChevronDown />
       </button>
 
