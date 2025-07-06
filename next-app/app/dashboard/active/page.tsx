@@ -74,7 +74,6 @@ export default function ActivePactsPage() {
         // Fetch details for each unique vault
         const vaultDetailsPromises = uniqueVaultIds.map(id => 
           vaultFactoryContract.getVaultDetails(id).then((details: ContractVaultDetailsArray) => {
-            console.log(`Vault ${id} details:`, details);
             // Contract returns an array, so we need to destructure it properly
             const [
               totalAmount,

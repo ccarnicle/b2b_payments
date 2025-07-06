@@ -88,27 +88,18 @@ export default function CreateVaultForm() {
     // Async Initialization Pattern: Use useEffect to await Synapse.create()
     useEffect(() => {
         async function initSynapseSdk() {
-            console.log("🔧 Synapse SDK Initialization Check:", {
-                isOnCalibrationTestnet,
-                hasSigner: !!signer,
-                hasProvider: !!provider,
-                signerType: signer?.constructor.name,
-                providerType: provider?.constructor.name
-            });
+
 
             if (isOnCalibrationTestnet && signer && provider) {
                 try {
-                    console.log("🚀 Attempting to create Synapse SDK...");
                     // Pass only provider for browser/MetaMask usage (not both signer and provider)
                     const sdk = await Synapse.create({ provider });
                     setSynapseSdk(sdk);
-                    console.log("✅ Synapse SDK created successfully:", sdk);
                 } catch (error) {
                     console.error("❌ Failed to initialize Synapse SDK:", error);
                     setSynapseSdk(null); // Ensure state is null on error
                 }
-            } else {
-                console.log("⚠️ Synapse SDK not initialized - missing requirements");
+                            } else {
                 setSynapseSdk(null); // Clear Synapse SDK if not on Calibration or if signer/provider are not ready
             }
         }
@@ -177,13 +168,7 @@ export default function CreateVaultForm() {
 
     // Function to check if Synapse setup is complete
     const checkSynapseSetupStatus = useCallback(async () => {
-        console.log("🔍 Starting Synapse setup check...", {
-            hasSynapseSdk: !!synapseSdk,
-            isOnCalibrationTestnet
-        });
-
         if (!synapseSdk || !isOnCalibrationTestnet) {
-            console.log("❌ Cannot check setup - missing SDK or not on Calibration");
             return false;
         }
 
@@ -191,48 +176,26 @@ export default function CreateVaultForm() {
         setSynapseProgressMessage("Checking Synapse setup status...");
 
         try {
-            console.log("💰 Checking account info...");
             // Check if we have sufficient funds deposited
             const accountInfo = await synapseSdk.payments.accountInfo();
             const minRequiredBalance = ethers.parseUnits("1", 6); // 1 USDFC minimum
             
-            console.log("💰 Account info:", {
-                availableFunds: accountInfo.availableFunds.toString(),
-                minRequired: minRequiredBalance.toString(),
-                hasEnoughFunds: accountInfo.availableFunds >= minRequiredBalance
-            });
-            
             if (accountInfo.availableFunds < minRequiredBalance) {
-                console.log("❌ Insufficient funds in Synapse payments contract");
                 return false;
             }
 
-            console.log("🔑 Checking Pandora service approval...");
             // Check if Pandora service is approved
             const currentNetwork = synapseSdk.getNetwork() as keyof typeof CONTRACT_ADDRESSES.PANDORA_SERVICE;
             const pandoraAddress = CONTRACT_ADDRESSES.PANDORA_SERVICE[currentNetwork];
             
-            console.log("🔑 Pandora details:", {
-                currentNetwork,
-                pandoraAddress
-            });
-            
             const serviceApprovalStatus = await synapseSdk.payments.serviceApproval(pandoraAddress);
             
-            console.log("🔑 Service approval status:", {
-                isApproved: serviceApprovalStatus.isApproved,
-                rateAllowance: serviceApprovalStatus.rateAllowance?.toString(),
-                lockupAllowance: serviceApprovalStatus.lockupAllowance?.toString()
-            });
-            
             if (!serviceApprovalStatus.isApproved) {
-                console.log("❌ Pandora service not approved");
                 return false;
             }
 
             // If we get here, setup is complete
             setIsSynapseSetupComplete(true);
-            console.log("✅ Synapse setup is complete!");
             return true;
 
         } catch (error) {
@@ -247,7 +210,6 @@ export default function CreateVaultForm() {
     // Auto-check Synapse setup status when conditions are met
     useEffect(() => {
         if (useVerifiableStorage && synapseSdk && isOnCalibrationTestnet && !isSynapseSetupComplete) {
-            console.log("🔄 Triggering automatic Synapse setup check...");
             checkSynapseSetupStatus();
         }
     }, [useVerifiableStorage, synapseSdk, isOnCalibrationTestnet, isSynapseSetupComplete, checkSynapseSetupStatus]);
@@ -261,9 +223,6 @@ export default function CreateVaultForm() {
 
         // Open the external Synapse setup URL in a new tab
         window.open('https://fs-upload-dapp.netlify.app/', '_blank', 'noopener,noreferrer');
-        
-        // Provide instructions to the user
-        console.log("Redirecting to external Synapse setup. Please complete the setup and return to continue.");
     }, [isOnCalibrationTestnet]); // Dependencies for useCallback
 
     // Function to handle content upload to Filecoin via Synapse
@@ -305,7 +264,6 @@ export default function CreateVaultForm() {
             // The proofSetId from the storage service is what we need to store on-chain.
             if (storage.proofSetId !== undefined) {
                 setSynapseProofSetId(storage.proofSetId); // Store the proof set ID
-                console.log(`Content successfully stored on Filecoin! Proof Set ID: ${storage.proofSetId}`);
             } else {
                 // This case should ideally not happen if upload is successful
                 throw new Error("Synapse upload successful but proofSetId was not returned from storage service.");
@@ -375,7 +333,7 @@ export default function CreateVaultForm() {
             const uploadResult = await pinata.upload.public.file(file).url(signedUrl);
             const cid = uploadResult.cid;
             
-            console.log("PDF uploaded with CID:", cid);
+
             setPdfCid(cid);
             setUploadStatus(`✓ PDF uploaded!`);
         } catch (err) {
@@ -414,7 +372,6 @@ export default function CreateVaultForm() {
                 setStatusMessage(attempts > 1 ? `Sending transaction (attempt ${attempts}/${MAX_RETRIES})...` : "Sending transaction...");
                 const tx = await contractMethod(...args);
                 
-                console.log("✅ Transaction sent successfully:", tx.hash);
                 return tx; // Success, return the transaction
                 
             } catch (error: unknown) {
@@ -499,16 +456,6 @@ export default function CreateVaultForm() {
             if (vaultType === "PrizePool") {
                 // Check if using verifiable storage and we have VaultFactoryVerifiable contract
                 if (isOnCalibrationTestnet && useVerifiableStorage) {
-                    console.log("🔗 Creating verifiable Prize Pool Vault with params:", {
-                        tokenAddress,
-                        amount: amountToApprove.toString(),
-                        releaseTimestamp,
-                        termsCID,
-                        isVerifiable: true,
-                        synapseProofSetId: synapseProofSetId!,
-                        funderCanOverrideVerification,
-                        contractAddress: vaultFactoryContract?.target || vaultFactoryContract?.address
-                    });
                     
                     // For verifiable vaults on Filecoin Calibration - assuming VaultFactoryVerifiable contract
                     tx = await executeTransactionWithRetry(
@@ -524,16 +471,6 @@ export default function CreateVaultForm() {
                         ]
                     );
                 } else {
-                    console.log("🔗 Creating non-verifiable Prize Pool Vault with params:", {
-                        tokenAddress,
-                        amount: amountToApprove.toString(),
-                        releaseTimestamp,
-                        termsCID,
-                        isVerifiable: false,
-                        synapseProofSetId: 0,
-                        funderCanOverrideVerification: false,
-                        contractAddress: vaultFactoryContract?.target || vaultFactoryContract?.address
-                    });
                     
                     // For Flow EVM (always non-verifiable) or non-verifiable vaults on Calibration
                     tx = await executeTransactionWithRetry(
