@@ -10,15 +10,28 @@ interface DistributeFormProps {
     totalAmount: string;
     tokenSymbol: string;
     onDistributeSuccess: () => void;
+    // Optional props for verifiable vaults
+    isVerifiable?: boolean;
+    synapseProofSetId?: string;
+    funderCanOverrideVerification?: boolean;
 }
 
-export function DistributePrizePoolForm({ vaultId, totalAmount, tokenSymbol, onDistributeSuccess }: DistributeFormProps) {
+export function DistributePrizePoolForm({ 
+    vaultId, 
+    totalAmount, 
+    tokenSymbol, 
+    onDistributeSuccess,
+    isVerifiable,
+    synapseProofSetId,
+    funderCanOverrideVerification
+}: DistributeFormProps) {
     const { vaultFactoryContract, activeChainConfig } = useWeb3();
     const [recipients, setRecipients] = useState('');
     const [amounts, setAmounts] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [status, setStatus] = useState('');
+    const [funderBypassVerification, setFunderBypassVerification] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,7 +45,7 @@ export function DistributePrizePoolForm({ vaultId, totalAmount, tokenSymbol, onD
             const recipientsArray = recipients.split(',').map(r => r.trim());
             const amountsArray = amounts.split(',').map(a => ethers.parseUnits(a.trim(), activeChainConfig?.primaryCoin.decimals || 18));
 
-            const tx = await vaultFactoryContract.distributePrizePool(vaultId, recipientsArray, amountsArray);
+            const tx = await vaultFactoryContract.distributePrizePool(vaultId, recipientsArray, amountsArray, funderBypassVerification);
             setStatus('Submitting distribution to the blockchain...');
             await tx.wait();
             
@@ -54,6 +67,30 @@ export function DistributePrizePoolForm({ vaultId, totalAmount, tokenSymbol, onD
         <form onSubmit={handleSubmit} className="space-y-4 bg-card p-6 rounded-lg border-muted mt-8">
             <h3 className="font-display text-xl font-bold">Distribute Prize Pool</h3>
             <p className="text-muted-foreground">Total to Distribute: <span className="font-bold text-foreground">{totalAmount} {tokenSymbol}</span></p>
+            
+            {/* Verifiable Storage Info */}
+            {isVerifiable && (
+                <div className="bg-background p-4 rounded-md border border-muted">
+                    <p className="text-sm text-muted-foreground mb-2">
+                        <span className="font-semibold text-green-500">Verifiable Vault</span> - Synapse Proof Set ID: {synapseProofSetId}
+                    </p>
+                    {funderCanOverrideVerification && (
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="funderBypassDistribution"
+                                checked={funderBypassVerification}
+                                onChange={(e) => setFunderBypassVerification(e.target.checked)}
+                                disabled={isLoading}
+                                className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                            />
+                            <label htmlFor="funderBypassDistribution" className="text-sm text-muted-foreground cursor-pointer">
+                                Bypass Filecoin Verification (if proof not live)
+                            </label>
+                        </div>
+                    )}
+                </div>
+            )}
             <div>
                 <label htmlFor="recipients" className={labelStyles}>Recipient Addresses (comma-separated)</label>
                 <textarea id="recipients" value={recipients} onChange={e => setRecipients(e.target.value)} className={inputStyles} rows={3} placeholder="0x..., 0x..., 0x..."/>

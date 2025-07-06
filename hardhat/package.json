@@ -8,7 +8,10 @@
     "node": "hardhat node",
     "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:calibration": "hardhat run scripts/deploy.ts --network calibration",
+    "deploy:calibration-verifiable": "hardhat run scripts/deploy-verifiable.ts --network calibration",
+    "deploy:flowTestnet-verifiable": "hardhat run scripts/deploy-verifiable.ts --network flowTestnet",
     "deploy:flowTestnet": "hardhat run scripts/deploy.ts --network flowTestnet"
+    
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

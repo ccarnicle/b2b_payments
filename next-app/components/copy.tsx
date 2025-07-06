@@ -389,37 +389,20 @@ export default function CreateVaultForm() {
     };
 
     // Helper function to execute transaction with retry logic
-    const executeTransactionWithRetry = async <T extends { wait(): Promise<unknown>; hash?: string }>(
-        method: string,
-        args: unknown[], 
+    const executeTransactionWithRetry = async <T extends { wait(): Promise<unknown> }>(
+        transactionFn: () => Promise<T>, 
         maxRetries = 3
     ): Promise<T> => {
         let lastError: unknown;
-        const MAX_RETRIES = maxRetries;
-        let attempts = 0;
         
-        while (attempts < MAX_RETRIES) {
-            attempts++;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                if (!vaultFactoryContract) {
-                    throw new Error("Vault factory contract not available");
-                }
-                
-                // Get the contract method and send the transaction
-                const contractMethod = (vaultFactoryContract as Record<string, (...args: unknown[]) => Promise<T>>)[method];
-                if (!contractMethod) {
-                    throw new Error(`Method ${method} not found on contract`);
-                }
-                
-                setStatusMessage(attempts > 1 ? `Sending transaction (attempt ${attempts}/${MAX_RETRIES})...` : "Sending transaction...");
-                const tx = await contractMethod(...args);
-                
-                console.log("✅ Transaction sent successfully:", tx.hash);
+                setStatusMessage(attempt > 1 ? `Sending transaction (attempt ${attempt}/${maxRetries})...` : "Sending transaction...");
+                const tx = await transactionFn();
                 return tx; // Success, return the transaction
-                
             } catch (error: unknown) {
                 lastError = error;
-                console.error(`Transaction attempt ${attempts} failed:`, error);
+                console.error(`Transaction attempt ${attempt} failed:`, error);
                 
                 // Check if it's a retryable network error
                 const isRetryableError = (
@@ -430,24 +413,23 @@ export default function CreateVaultForm() {
                     (error && typeof error === 'object' && 'message' in error && (
                         (error as { message: string }).message?.includes('Internal JSON-RPC error') ||
                         (error as { message: string }).message?.includes('network error') ||
-                        (error as { message: string }).message?.includes('timeout') ||
-                        (error as { message: string }).message?.includes('could not coalesce error')
+                        (error as { message: string }).message?.includes('timeout')
                     ))
                 );
                 
-                // If it's the last attempt or not a retryable error, break the loop
-                if (attempts >= MAX_RETRIES || !isRetryableError) {
-                    break;
+                // If it's the last attempt or not a retryable error, throw the error
+                if (attempt === maxRetries || !isRetryableError) {
+                    throw error;
                 }
                 
-                // Wait before retrying (exponential backoff: 2s, 4s, 6s)
-                const delay = 2000 * attempts;
+                // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+                const delay = Math.pow(2, attempt - 1) * 1000;
                 setStatusMessage(`Network error detected. Retrying in ${delay / 1000} seconds...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
         
-        throw lastError; // Throw the last error if all attempts failed
+        throw lastError; // This should never be reached, but just in case
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -511,9 +493,8 @@ export default function CreateVaultForm() {
                     });
                     
                     // For verifiable vaults on Filecoin Calibration - assuming VaultFactoryVerifiable contract
-                    tx = await executeTransactionWithRetry(
-                        "createPrizePoolVault",
-                        [
+                    tx = await executeTransactionWithRetry(() => 
+                        vaultFactoryContract.createPrizePoolVault(
                             tokenAddress, 
                             amountToApprove, 
                             releaseTimestamp, 
@@ -521,7 +502,7 @@ export default function CreateVaultForm() {
                             true, // isVerifiable: true
                             synapseProofSetId!, // synapseProofSetId: guaranteed non-null by check above
                             funderCanOverrideVerification // funderCanOverrideVerification
-                        ]
+                        )
                     );
                 } else {
                     console.log("🔗 Creating non-verifiable Prize Pool Vault with params:", {
@@ -536,9 +517,8 @@ export default function CreateVaultForm() {
                     });
                     
                     // For Flow EVM (always non-verifiable) or non-verifiable vaults on Calibration
-                    tx = await executeTransactionWithRetry(
-                        "createPrizePoolVault",
-                        [
+                    tx = await executeTransactionWithRetry(() =>
+                        vaultFactoryContract.createPrizePoolVault(
                             tokenAddress, 
                             amountToApprove, 
                             releaseTimestamp, 
@@ -546,7 +526,7 @@ export default function CreateVaultForm() {
                             false, // isVerifiable: false
                             0,     // synapseProofSetId: 0 (or any default number for a non-verifiable vault)
                             false  // funderCanOverrideVerification: false (as it's not applicable)
-                        ]
+                        )
                     );
                 }
             } else {
@@ -560,9 +540,8 @@ export default function CreateVaultForm() {
                 // Check if using verifiable storage and we have VaultFactoryVerifiable contract
                 if (isOnCalibrationTestnet && useVerifiableStorage) {
                     // For verifiable vaults on Filecoin Calibration - assuming VaultFactoryVerifiable contract
-                    tx = await executeTransactionWithRetry(
-                        "createMilestoneVault",
-                        [
+                    tx = await executeTransactionWithRetry(() =>
+                        vaultFactoryContract.createMilestoneVault(
                             beneficiary, 
                             tokenAddress, 
                             payouts, 
@@ -570,13 +549,12 @@ export default function CreateVaultForm() {
                             true, // isVerifiable: true
                             synapseProofSetId!, // synapseProofSetId: guaranteed non-null by check above
                             funderCanOverrideVerification // funderCanOverrideVerification
-                        ]
+                        )
                     );
                 } else {
                     // For Flow EVM (always non-verifiable) or non-verifiable vaults on Calibration
-                    tx = await executeTransactionWithRetry(
-                        "createMilestoneVault",
-                        [
+                    tx = await executeTransactionWithRetry(() =>
+                        vaultFactoryContract.createMilestoneVault(
                             beneficiary, 
                             tokenAddress, 
                             payouts, 
@@ -584,7 +562,7 @@ export default function CreateVaultForm() {
                             false, // isVerifiable: false
                             0,     // synapseProofSetId: 0 (or any default number for a non-verifiable vault)
                             false  // funderCanOverrideVerification: false (as it's not applicable)
-                        ]
+                        )
                     );
                 }
             }
