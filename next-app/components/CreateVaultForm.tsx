@@ -945,8 +945,8 @@ export default function CreateVaultForm() {
                 {isCreating ? 'Creating Vault...' : 'Create Vault'}
             </button>
 
-            {/* Debug: Show why Create Vault button is disabled */}
-            {(isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances || (isOnCalibrationTestnet && useVerifiableStorage && (synapseProofSetId === null || !isSynapseSetupComplete))) && (
+            {/* Debug: Show why Create Vault button is disabled - Hidden for chains that prefer sleeker UI */}
+            {(isCreating || isApproving || (needsApproval && !isApproved) || isUploadingPdf || !hasSufficientBalances || (isOnCalibrationTestnet && useVerifiableStorage && (synapseProofSetId === null || !isSynapseSetupComplete))) && activeChainConfig?.showDetailedErrors && (
                 <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm font-medium text-yellow-700">Create Vault button is disabled because:</p>
                     <ul className="mt-1 text-sm text-yellow-600">

@@ -12,7 +12,7 @@ export default function InvoicesPage() {
         <div className="bg-background rounded-lg border border-muted p-8 text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">📄</span>
+              <span className="text-4xl">📄</span>
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-3">Coming Soon!</h2>
             <p className="text-muted-foreground text-lg mb-6">

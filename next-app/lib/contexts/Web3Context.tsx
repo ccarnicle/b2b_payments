@@ -38,6 +38,7 @@ interface ChainConfig {
     nativeToken: TokenRequirement;
     escrowToken: TokenRequirement;
   };
+  showDetailedErrors: boolean; // Whether to show detailed error messages in forms
 }
 
 // Define all supported blockchain networks and their configurations
@@ -77,7 +78,8 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
         faucetUrl: "https://docs.secured.finance/usdfc-stablecoin/getting-started/getting-test-usdfc-on-testnet",
         faucetInstructions: "Follow the guide to mint USDFC using tFIL"
       }
-    }
+    },
+    showDetailedErrors: true
   },
   {
     chainId: "0x221", // Flow EVM Testnet (545 in decimal)
@@ -114,7 +116,8 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
         faucetUrl: "https://evm-testnet.flowscan.io/token/0xd3bF53DAC106A0290B0483EcBC89d40FcC961f3e?tab=write_contract",
         faucetInstructions: "Use the deposit function to wrap FLOW into WFLOW"
       }
-    }
+    },
+    showDetailedErrors: false
   },
   // Add other networks here as needed in the future
 ];
