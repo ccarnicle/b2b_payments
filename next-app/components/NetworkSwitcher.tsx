@@ -40,10 +40,26 @@ export default function NetworkSwitcher() {
   }, []);
 
   if (!activeChainConfig) {
+    // Flow EVM Testnet chainId for switching
+    const flowEVMChainId = "0x221";
+    
+    const handleSwitchToFlowEVM = async () => {
+      if (wallets && wallets.length > 0) {
+        try {
+          await wallets[0].switchChain(parseInt(flowEVMChainId, 16));
+        } catch (error) {
+          console.error("Failed to switch to Flow EVM Testnet:", error);
+        }
+      }
+    };
+
     return (
-      <div className="bg-secondary px-4 py-2 rounded-full text-sm font-medium">
-        Unsupported Network
-      </div>
+      <button
+        onClick={handleSwitchToFlowEVM}
+        className="bg-secondary hover:bg-secondary/80 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+      >
+        Switch Network?
+      </button>
     );
   }
 

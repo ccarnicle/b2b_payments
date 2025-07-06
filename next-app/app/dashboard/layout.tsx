@@ -3,6 +3,7 @@
 
 import Sidebar from "@/components/Sidebar";
 import { useWeb3 } from "@/lib/contexts/Web3Context";
+import { useWallets } from '@privy-io/react-auth';
 
 export default function DashboardLayout({
   children,
@@ -10,6 +11,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { login, authenticated, activeChainConfig, isReady } = useWeb3();
+  const { wallets } = useWallets();
 
   if (!isReady) {
     return (
@@ -60,10 +62,26 @@ export default function DashboardLayout({
                   children
                 ) : (
                   <div className="text-center p-8">
-                    <h2 className="text-2xl font-bold mb-4">Unsupported Network</h2>
-                    <p className="text-muted-foreground">
+                    <h2 className="text-2xl font-bold mb-4">Network Switch Required</h2>
+                    <p className="text-muted-foreground mb-6">
                       Please switch to the Filecoin Calibration or Flow-EVM testnet to continue.
                     </p>
+                    <button
+                      onClick={async () => {
+                        // Flow EVM Testnet chainId
+                        const flowEVMChainId = "0x221";
+                        if (wallets && wallets.length > 0) {
+                          try {
+                            await wallets[0].switchChain(parseInt(flowEVMChainId, 16));
+                          } catch (error) {
+                            console.error("Failed to switch to Flow EVM Testnet:", error);
+                          }
+                        }
+                      }}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+                    >
+                      Switch Network
+                    </button>
                   </div>
                 )}
               </div>
