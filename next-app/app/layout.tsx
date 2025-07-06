@@ -27,11 +27,6 @@ const playfairDisplay = Playfair_Display({
 export const metadata: Metadata = {
   title: "Pact",
   description: "Multi-chain escrow platform for Prize Pool contests and Milestone-based payments. Create transparent, on-chain agreements with automated fund distribution.",
-  icons: {
-    icon: '/icon.png',
-    shortcut: '/icon.png',
-    apple: '/icon.png',
-  },
 };
 
 export default function RootLayout({
