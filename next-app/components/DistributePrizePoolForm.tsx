@@ -12,7 +12,6 @@ interface DistributeFormProps {
     onDistributeSuccess: () => void;
     // Optional props for verifiable vaults
     isVerifiable?: boolean;
-    synapseProofSetId?: string;
     funderCanOverrideVerification?: boolean;
 }
 
@@ -22,7 +21,6 @@ export function DistributePrizePoolForm({
     tokenSymbol, 
     onDistributeSuccess,
     isVerifiable,
-    synapseProofSetId,
     funderCanOverrideVerification
 }: DistributeFormProps) {
     const { vaultFactoryContract, activeChainConfig } = useWeb3();
@@ -69,26 +67,21 @@ export function DistributePrizePoolForm({
             <p className="text-muted-foreground">Total to Distribute: <span className="font-bold text-foreground">{totalAmount} {tokenSymbol}</span></p>
             
             {/* Verifiable Storage Info */}
-            {isVerifiable && (
+            {isVerifiable && funderCanOverrideVerification && (
                 <div className="bg-background p-4 rounded-md border border-muted">
-                    <p className="text-sm text-muted-foreground mb-2">
-                        <span className="font-semibold text-green-500">Verifiable Vault</span> - Synapse Proof Set ID: {synapseProofSetId}
-                    </p>
-                    {funderCanOverrideVerification && (
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
-                                id="funderBypassDistribution"
-                                checked={funderBypassVerification}
-                                onChange={(e) => setFunderBypassVerification(e.target.checked)}
-                                disabled={isLoading}
-                                className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
-                            />
-                            <label htmlFor="funderBypassDistribution" className="text-sm text-muted-foreground cursor-pointer">
-                                Bypass Filecoin Verification (if proof not live)
-                            </label>
-                        </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            id="funderBypassDistribution"
+                            checked={funderBypassVerification}
+                            onChange={(e) => setFunderBypassVerification(e.target.checked)}
+                            disabled={isLoading}
+                            className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary"
+                        />
+                        <label htmlFor="funderBypassDistribution" className="text-sm text-muted-foreground cursor-pointer">
+                            Bypass Filecoin Verification (if proof not live)
+                        </label>
+                    </div>
                 </div>
             )}
             <div>

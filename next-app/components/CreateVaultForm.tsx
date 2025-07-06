@@ -952,7 +952,7 @@ export default function CreateVaultForm() {
                     <ul className="mt-1 text-sm text-yellow-600">
                         {isCreating && <li>• Vault creation is in progress</li>}
                         {isApproving && <li>• Token approval is in progress</li>}
-                        {needsApproval && !isApproved && <li>• Token approval is required but not completed</li>}
+                        {needsApproval && !isApproved && !isApproving && <li>• Token approval is required but not completed</li>}
                         {isUploadingPdf && <li>• PDF upload is in progress</li>}
                         {!hasSufficientBalances && <li>• Insufficient token balances</li>}
                         {isOnCalibrationTestnet && useVerifiableStorage && synapseProofSetId === null && <li>• Content must be uploaded to Filecoin first {synapseLoading ? '(Content Upload in Progress)' : '(synapseProofSetId is null)'}</li>}

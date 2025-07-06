@@ -22,9 +22,9 @@ async function main() {
   const calibrationChainId = 314159;
   
   // The address of your deployed VaultFactoryVerifiable contract on Calibration
-  const vaultFactoryVerifiableAddressCalibration = process.env.NEXT_PUBLIC_VERIFIABLE_VAULT_FACTORY_ADDRESS_CALIBRATION;
+  const vaultFactoryVerifiableAddressCalibration = process.env.VERIFIABLE_VAULT_FACTORY_ADDRESS_CALIBRATION;
   if (!vaultFactoryVerifiableAddressCalibration) {
-    throw new Error("NEXT_PUBLIC_VERIFIABLE_VAULT_FACTORY_ADDRESS_CALIBRATION not set in .env.local");
+    throw new Error("VERIFIABLE_VAULT_FACTORY_ADDRESS_CALIBRATION not set in .env.local");
   }
 
   // The official Synapse PDPVerifier contract address on Filecoin Calibration Testnet.

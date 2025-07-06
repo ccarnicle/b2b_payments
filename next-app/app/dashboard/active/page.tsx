@@ -10,7 +10,7 @@ import Link from 'next/link';
 interface ContractVaultDetails {
   funder: string; // address
   beneficiary: string; // address
-  token: string; // address of the IERC20 token
+  token: string; // address of the token (mapped from tokenAddress)
   vaultType: number; // 0 for PrizePool, 1 for Milestone
   totalAmount: bigint; // uint256
   amountWithdrawn: bigint; // uint256
@@ -20,22 +20,28 @@ interface ContractVaultDetails {
   milestonePayouts: bigint[]; // uint256[] (Milestone specific)
   milestonesPaid: boolean[]; // bool[] (Milestone specific)
   nextMilestoneToPay: bigint; // uint256 (Milestone specific)
+  isVerifiable: boolean; // bool (verifiable storage)
+  funderCanOverrideVerification: boolean; // bool (verifiable storage)
+  synapseProofSetId: bigint; // uint256 (verifiable storage)
 }
 
 // Type for the array response from the contract
 type ContractVaultDetailsArray = [
-  string, // funder
-  string, // beneficiary
-  string, // token
-  bigint, // vaultType
   bigint, // totalAmount
   bigint, // amountWithdrawn
-  string, // termsCID
-  boolean, // finalized
   bigint, // releaseTime
+  bigint, // nextMilestoneToPay
+  bigint, // synapseProofSetId
+  string, // funder
+  string, // beneficiary
+  string, // tokenAddress
+  string, // termsCID
   bigint[], // milestonePayouts
   boolean[], // milestonesPaid
-  bigint // nextMilestoneToPay
+  boolean, // finalized
+  boolean, // isVerifiable
+  boolean, // funderCanOverrideVerification
+  bigint // vaultType
 ];
 
 // Our unified Vault interface for the frontend components, adding the client-side 'id'
@@ -71,24 +77,27 @@ export default function ActivePactsPage() {
             console.log(`Vault ${id} details:`, details);
             // Contract returns an array, so we need to destructure it properly
             const [
-              funder,
-              beneficiary, 
-              token,
-              vaultType,
               totalAmount,
               amountWithdrawn,
-              termsCID,
-              finalized,
               releaseTime,
+              nextMilestoneToPay,
+              synapseProofSetId,
+              funder,
+              beneficiary,
+              tokenAddress,
+              termsCID,
               milestonePayouts,
               milestonesPaid,
-              nextMilestoneToPay
+              finalized,
+              isVerifiable,
+              funderCanOverrideVerification,
+              vaultType
             ] = details;
             
             return {
               funder,
               beneficiary,
-              token,
+              token: tokenAddress, // Map tokenAddress to token for compatibility
               vaultType: Number(vaultType),
               totalAmount,
               amountWithdrawn,
@@ -98,6 +107,9 @@ export default function ActivePactsPage() {
               milestonePayouts,
               milestonesPaid,
               nextMilestoneToPay,
+              isVerifiable,
+              funderCanOverrideVerification,
+              synapseProofSetId,
               id: id.toString(), // Add the vault ID to the object
             };
           }).catch(error => {

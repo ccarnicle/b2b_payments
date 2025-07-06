@@ -11,11 +11,11 @@ import { DistributePrizePoolForm } from '@/components/DistributePrizePoolForm';
 import { Synapse, CONTRACT_ADDRESSES } from '@filoz/synapse-sdk';
 // --- END SYNAPSE IMPORTS ---
 
-// --- VAULTDETAILS INTERFACE ---
 interface VaultDetails {
   funder: string;
   beneficiary: string;
-  token: string;
+  // --- OLD: token: string; ---
+  tokenAddress: string; // NEW: Reflects the contract struct change
   vaultType: number; // 0 for PrizePool, 1 for Milestone
   totalAmount: string;
   amountWithdrawn: string;
@@ -29,18 +29,16 @@ interface VaultDetails {
     terms?: string; 
     pdfCid?: string; 
     vaultType?: string;
-    tokenAddress?: string;
+    tokenAddress?: string; // Keep this one for IPFS content if it's there
     beneficiary?: string;
-    isVerifiable?: boolean; // Ensure these are correctly typed if parsed from IPFS JSON
-    synapseProofSetId?: string; // Ensure these are correctly typed if parsed from IPFS JSON
-    funderCanOverrideVerification?: boolean; // Ensure these are correctly typed if parsed from IPFS JSON
+    isVerifiable?: boolean;
+    synapseProofSetId?: string;
+    funderCanOverrideVerification?: boolean;
   };
-  // NEW: Fields for Synapse Filecoin verification, directly from contract
   isVerifiable: boolean;
-  synapseProofSetId: bigint; // Contract returns uint256 which maps to bigint in ethers v6
+  synapseProofSetId: bigint;
   funderCanOverrideVerification: boolean;
 }
-// --- END VAULTDETAILS INTERFACE ---
 
 function DetailItem({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
@@ -105,9 +103,29 @@ export default function VaultDetailPage() {
     setStatus('');
     try {
       const data = await vaultFactoryContract.getVaultDetails(vaultId);
+      
+      // Destructure the array response from the contract
+      const [
+        totalAmount,
+        amountWithdrawn,
+        releaseTime,
+        nextMilestoneToPay,
+        synapseProofSetId,
+        funder,
+        beneficiary,
+        tokenAddress,
+        termsCID,
+        milestonePayouts,
+        milestonesPaid,
+        finalized,
+        isVerifiable,
+        funderCanOverrideVerification,
+        vaultType
+      ] = data;
+      
       let termsData = null;
-      if (data.termsCID) {
-        const ipfsUrl = `https://${process.env.NEXT_PUBLIC_GATEWAY_URL}/ipfs/${data.termsCID}`;
+      if (termsCID) {
+        const ipfsUrl = `https://${process.env.NEXT_PUBLIC_GATEWAY_URL}/ipfs/${termsCID}`;
         const response = await fetch(ipfsUrl);
         if(response.ok) termsData = await response.json();
       }
@@ -115,23 +133,23 @@ export default function VaultDetailPage() {
       const tokenDecimals = activeChainConfig.primaryCoin.decimals;
       
       setDetails({
-        funder: data.funder,
-        beneficiary: data.beneficiary,
-        token: data.token,
-        vaultType: Number(data.vaultType),
-        totalAmount: ethers.formatUnits(data.totalAmount, tokenDecimals),
-        amountWithdrawn: ethers.formatUnits(data.amountWithdrawn, tokenDecimals),
-        termsCID: data.termsCID,
-        finalized: data.finalized,
-        releaseTime: Number(data.releaseTime),
-        milestonePayouts: data.milestonePayouts.map((p: bigint) => ethers.formatUnits(p, tokenDecimals)),
-        milestonesPaid: data.milestonesPaid,
-        nextMilestoneToPay: Number(data.nextMilestoneToPay),
+        funder,
+        beneficiary,
+        tokenAddress,
+        vaultType: Number(vaultType),
+        totalAmount: ethers.formatUnits(totalAmount, tokenDecimals),
+        amountWithdrawn: ethers.formatUnits(amountWithdrawn, tokenDecimals),
+        termsCID,
+        finalized,
+        releaseTime: Number(releaseTime),
+        milestonePayouts: milestonePayouts.map((p: bigint) => ethers.formatUnits(p, tokenDecimals)),
+        milestonesPaid,
+        nextMilestoneToPay: Number(nextMilestoneToPay),
         termsContent: termsData,
         // NEW: Populate new fields from contract data
-        isVerifiable: data.isVerifiable,
-        synapseProofSetId: data.synapseProofSetId,
-        funderCanOverrideVerification: data.funderCanOverrideVerification,
+        isVerifiable,
+        synapseProofSetId,
+        funderCanOverrideVerification,
       });
     } catch (err) {
       console.error("Failed to fetch pact details:", err);
@@ -265,7 +283,6 @@ export default function VaultDetailPage() {
               onDistributeSuccess={fetchVaultDetails}
               // NEW PROPS FOR VERIFIABLE VAULTS
               isVerifiable={details.isVerifiable} 
-              synapseProofSetId={details.synapseProofSetId.toString()} // Convert bigint to string for child component
               funderCanOverrideVerification={details.funderCanOverrideVerification}
           />
       )}
@@ -296,7 +313,10 @@ export default function VaultDetailPage() {
       {/* Show a status message if no actions are available */}
       {!canDistributePrizePool && !canReleaseMilestone && (
         <div className="bg-card p-6 rounded-lg border border-muted text-center text-muted-foreground">
-           {details.finalized ? "This pact has been completed." : "Awaiting next action..."}
+           {details.finalized ? "This pact has been completed." : 
+            (isPrizePool && details.releaseTime && details.releaseTime * 1000 > Date.now()) ? 
+              `Awaiting Vault Unlock - ${new Date(details.releaseTime * 1000).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}` : 
+              "Awaiting next action..."}
         </div>
       )}
       {status && <p className="text-green-600 text-sm text-center pt-4">{status}</p>}
@@ -434,7 +454,7 @@ export default function VaultDetailPage() {
               } 
             />
           )}
-          <DetailItem label="Token Contract" value={details.token} />
+          <DetailItem label="Token Contract" value={details.tokenAddress} />
         </dl>
       </div>
     </div>

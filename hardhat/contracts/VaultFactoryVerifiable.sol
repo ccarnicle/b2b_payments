@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // Interface for the Synapse PDPVerifier contract
-// Only includes the function we need to call
 interface IPDPVerifier {
     function proofSetLive(uint256 proofSetId) external view returns (bool);
 }
@@ -21,26 +20,32 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
 
     enum VaultType { PrizePool, Milestone }
 
+    // --- OPTIMIZED VAULT STRUCT FOR STORAGE PACKING ---
     struct Vault {
-        address funder;
-        address beneficiary; // NOTE: address(0) for PrizePools.
-        IERC20 token;
-        VaultType vaultType;
+        // Group 1: uint256 fields (each takes one full 32-byte slot)
         uint256 totalAmount;
         uint256 amountWithdrawn;
+        uint256 releaseTime;        // For PrizePools
+        uint256 nextMilestoneToPay; // For Milestones
+        uint256 synapseProofSetId;  // Synapse Proof Set ID
+
+        // Group 2: Addresses (3 x 20 bytes = 60 bytes total, will span two 32-byte slots)
+        address funder;
+        address beneficiary;
+        address tokenAddress;       // Changed from IERC20 to address for better packing
+
+        // Group 3: Dynamic arrays (each gets its own dedicated 32-byte slot pointer/length)
         string termsCID;
-        bool finalized;
-        // PrizePool-specific fields
-        uint256 releaseTime;
-        // Milestone-specific fields
         uint256[] milestonePayouts;
         bool[] milestonesPaid;
-        uint256 nextMilestoneToPay;
-        // NEW: Fields for Synapse Filecoin verification
+
+        // Group 4: Booleans and Enum (these will pack together into remaining space or a new slot)
+        bool finalized;
         bool isVerifiable;
-        uint256 synapseProofSetId; // ID from Synapse SDK upload (corresponds to their on-chain proof set)
-        bool funderCanOverrideVerification; // Allows funder to bypass verification check at payout
+        bool funderCanOverrideVerification;
+        VaultType vaultType; // Enum, takes up 1 byte
     }
+    // --- END OPTIMIZED VAULT STRUCT ---
 
     // --- State Variables ---
     Vault[] public vaults;
@@ -60,12 +65,12 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         address beneficiary,
         VaultType vaultType,
         uint256 totalAmount,
-        bool isVerifiable // NEW: Include this in event
+        bool isVerifiable
     );
     event FundsDistributed(uint256 indexed vaultId, uint256 totalAmount);
     event MilestoneReleased(uint256 indexed vaultId, address indexed beneficiary, uint256 amount);
     event VaultCompleted(uint256 indexed vaultId);
-    event FunderVerificationOverridden(uint256 indexed vaultId); // NEW: Event for override
+    event FunderVerificationOverridden(uint256 indexed vaultId);
 
     // --- Errors ---
     error InvalidVaultId();
@@ -77,7 +82,6 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
     error ZeroAddress();
     error MismatchedArrays();
     error IncorrectTotalPayout();
-    // NEW: Errors for verifiable storage
     error VerifiableStorageNotSupportedOnChain();
     error ProofSetIdCannotBeZeroForVerifiableVault();
     error ProofSetIdMustBeZeroForNonVerifiableVault();
@@ -91,12 +95,6 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
     }
 
     // --- Owner Functions ---
-    /**
-     * @dev Sets the PDPVerifier contract address for a specific chain ID.
-     * Only the owner can call this. Setting address(0) disables verifiable storage for that chain.
-     * @param _chainId The chain ID for which to set the PDPVerifier.
-     * @param _pdpVerifierAddress The address of the Synapse PDPVerifier contract.
-     */
     function setPdpVerifierContractForChain(uint256 _chainId, address _pdpVerifierAddress) public onlyOwner {
         chainIdToPdpVerifier[_chainId] = _pdpVerifierAddress;
     }
@@ -113,9 +111,9 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         uint256 _amount,
         uint256 _releaseTime,
         string calldata _termsCID,
-        bool _isVerifiable, // NEW
-        uint256 _synapseProofSetId, // NEW
-        bool _funderCanOverrideVerification // NEW
+        bool _isVerifiable,
+        uint256 _synapseProofSetId,
+        bool _funderCanOverrideVerification
     ) public {
         if (_amount == 0) revert MilestoneAmountsCannotBeZero();
         if (_releaseTime <= block.timestamp) revert ReleaseTimeNotMet();
@@ -142,18 +140,23 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
 
         newVault.funder = msg.sender;
         newVault.beneficiary = address(0);
-        newVault.token = IERC20(_token);
+        newVault.tokenAddress = _token; // Updated field name
         newVault.totalAmount = _amount;
         newVault.vaultType = VaultType.PrizePool;
         newVault.releaseTime = _releaseTime;
         newVault.termsCID = _termsCID;
-        newVault.isVerifiable = _isVerifiable; // Store new flag
-        newVault.synapseProofSetId = _synapseProofSetId; // Store Proof Set ID
-        newVault.funderCanOverrideVerification = _funderCanOverrideVerification; // Store override flag
-
-        newVault.token.transferFrom(msg.sender, address(this), _amount);
+        newVault.finalized = false; // Explicitly set for clarity
+        newVault.isVerifiable = _isVerifiable;
+        newVault.synapseProofSetId = _synapseProofSetId;
+        newVault.funderCanOverrideVerification = _funderCanOverrideVerification;
         
-        funderVaultIds[msg.sender].push(uint224(vaultId)); // Cast to uint224
+        // Initialize milestone-specific fields to their default empty/zero values for PrizePool
+        // Dynamic arrays (milestonePayouts, milestonesPaid) are already empty by default push()
+        newVault.nextMilestoneToPay = 0; 
+
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        
+        funderVaultIds[msg.sender].push(uint224(vaultId));
         emit VaultCreated(vaultId, msg.sender, address(0), VaultType.PrizePool, _amount, _isVerifiable);
     }
 
@@ -163,9 +166,9 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         address _token,
         uint256[] calldata _milestonePayouts,
         string calldata _termsCID,
-        bool _isVerifiable, // NEW
-        uint256 _synapseProofSetId, // NEW
-        bool _funderCanOverrideVerification // NEW
+        bool _isVerifiable,
+        uint256 _synapseProofSetId,
+        bool _funderCanOverrideVerification
     ) public {
         if (_beneficiary == address(0)) revert ZeroAddress();
         if (_milestonePayouts.length == 0) revert NoMilestonesToPay();
@@ -197,20 +200,22 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         Vault storage newVault = vaults.push();
         newVault.funder = msg.sender;
         newVault.beneficiary = _beneficiary;
-        newVault.token = IERC20(_token);
+        newVault.tokenAddress = _token; // Updated field name
         newVault.totalAmount = totalDeposit;
         newVault.vaultType = VaultType.Milestone;
         newVault.termsCID = _termsCID;
         newVault.milestonePayouts = _milestonePayouts;
-        newVault.milestonesPaid = new bool[](_milestonePayouts.length);
-        newVault.isVerifiable = _isVerifiable; // Store new flag
-        newVault.synapseProofSetId = _synapseProofSetId; // Store Proof Set ID
-        newVault.funderCanOverrideVerification = _funderCanOverrideVerification; // Store override flag
+        newVault.milestonesPaid = new bool[](_milestonePayouts.length); // This line is expensive for many milestones
+        newVault.nextMilestoneToPay = 0; // Initialize to first milestone (index 0)
+        newVault.finalized = false; // Explicitly set for clarity
+        newVault.isVerifiable = _isVerifiable;
+        newVault.synapseProofSetId = _synapseProofSetId;
+        newVault.funderCanOverrideVerification = _funderCanOverrideVerification;
 
-        newVault.token.transferFrom(msg.sender, address(this), totalDeposit);
+        IERC20(_token).transferFrom(msg.sender, address(this), totalDeposit);
 
-        funderVaultIds[msg.sender].push(uint224(vaultId)); // Cast to uint224
-        beneficiaryVaultIds[_beneficiary].push(uint224(vaultId)); // Cast to uint224
+        funderVaultIds[msg.sender].push(uint224(vaultId));
+        beneficiaryVaultIds[_beneficiary].push(uint224(vaultId));
 
         emit VaultCreated(vaultId, msg.sender, _beneficiary, VaultType.Milestone, totalDeposit, _isVerifiable);
     }
@@ -220,7 +225,7 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         uint256 _vaultId,
         address[] calldata _recipients,
         uint256[] calldata _amounts,
-        bool _funderBypassVerification // NEW: Funder can opt to bypass if enabled for this vault
+        bool _funderBypassVerification
     ) public nonReentrant {
         if (_vaultId >= vaults.length) revert InvalidVaultId();
         Vault storage vault = vaults[_vaultId];
@@ -239,19 +244,15 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         // NEW: Verify Synapse Proof Set if required for this vault
         if (vault.isVerifiable) {
             address pdpVerifierAddress = chainIdToPdpVerifier[block.chainid];
-            // Ensure the PDP Verifier contract is set for the current chain
             if (pdpVerifierAddress == address(0)) {
-                // This scenario should ideally be caught at creation, but good to double-check.
                 revert VerifiableStorageNotSupportedOnChain();
             }
 
-            // If override is NOT enabled OR funder is NOT bypassing, then check proofSetLive
             if (!vault.funderCanOverrideVerification || !_funderBypassVerification) {
                 if (!IPDPVerifier(pdpVerifierAddress).proofSetLive(vault.synapseProofSetId)) {
                     revert ProofSetNotLive();
                 }
             } else {
-                // Funder chose to bypass verification and it's enabled for this vault
                 emit FunderVerificationOverridden(_vaultId);
             }
         }
@@ -261,7 +262,7 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
 
         for (uint i = 0; i < _recipients.length; i++) {
             if (_amounts[i] > 0) {
-                vault.token.transfer(_recipients[i], _amounts[i]);
+                IERC20(vault.tokenAddress).transfer(_recipients[i], _amounts[i]); // Updated field name
             }
         }
 
@@ -272,7 +273,7 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
     // --- Use Case 2: Milestone Payout ---
     function releaseNextMilestone(
         uint256 _vaultId,
-        bool _funderBypassVerification // NEW: Funder can opt to bypass if enabled for this vault
+        bool _funderBypassVerification
     ) public nonReentrant {
         if (_vaultId >= vaults.length) revert InvalidVaultId();
         Vault storage vault = vaults[_vaultId];
@@ -284,18 +285,15 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
         // NEW: Verify Synapse Proof Set if required for this vault
         if (vault.isVerifiable) {
             address pdpVerifierAddress = chainIdToPdpVerifier[block.chainid];
-            // Ensure the PDP Verifier contract is set for the current chain
             if (pdpVerifierAddress == address(0)) {
                 revert VerifiableStorageNotSupportedOnChain();
             }
 
-            // If override is NOT enabled OR funder is NOT bypassing, then check proofSetLive
             if (!vault.funderCanOverrideVerification || !_funderBypassVerification) {
                 if (!IPDPVerifier(pdpVerifierAddress).proofSetLive(vault.synapseProofSetId)) {
                     revert ProofSetNotLive();
                 }
             } else {
-                // Funder chose to bypass verification and it's enabled for this vault
                 emit FunderVerificationOverridden(_vaultId);
             }
         }
@@ -311,7 +309,7 @@ contract VaultFactoryVerifiable is ReentrancyGuard {
             vault.finalized = true;
         }
 
-        vault.token.transfer(vault.beneficiary, payoutAmount);
+        IERC20(vault.tokenAddress).transfer(vault.beneficiary, payoutAmount); // Updated field name
         emit MilestoneReleased(_vaultId, vault.beneficiary, payoutAmount);
         if(vault.finalized) {
             emit VaultCompleted(_vaultId);
