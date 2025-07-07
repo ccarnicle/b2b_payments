@@ -16,8 +16,8 @@ Our dual-chain architecture delivers both speed and security:
 
 ## 🚀 Demo and Website
 
-**[YouTube Demo](https://www.youtube.com/watch?v=yg_1n4yHOx4)**
-**[Live Site](https://www.makeapact.xyz/)**
+- **[YouTube Demo](https://www.youtube.com/watch?v=yg_1n4yHOx4)**
+- **[Live Site](https://www.makeapact.xyz/)**
 
 ## 🛠️ Tech Stack
 
