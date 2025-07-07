@@ -1,10 +1,10 @@
 # Pact: Decentralized Payments Layer for the Creator Economy
 
-**Programmable payment vaults that turn payment friction into creative flow.**
+**Pact provides programmable payment vaults that turn payment friction into creative flow.**
 
 ## 🎯 The Problem
 
-As builders and creators, we've all felt the pain of broken payment systems - endless invoice chasing, vague promises, and overdue money. At this moment, thousands of creators, freelancers, and emerging DeSci projects are awaiting payments, struggling to collaborate in an increasingly global economy.
+For builders, researchers and creators, chasing down contracts and payments is a broken, demoralizing process. You spend hours on follow-ups, navigating vague promises, email chains, and outdated workflows - just to get paid for work you’ve already delivered. There's no standard way to track terms, milestones, or payment status, especially across grant programs, DAOs, or startup clients
 
 ## 💡 The Solution
 
