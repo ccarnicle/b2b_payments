@@ -14,9 +14,10 @@ Our dual-chain architecture delivers both speed and security:
 - **Flow EVM** for fast, user-friendly transactions - positioning it well for mainstream creator adoption
 - **Filecoin Calibration** for high-stakes agreements requiring durable proof and verifiable integrity
 
-## 🚀 Live Demo
+## 🚀 Demo and Website
 
-**[Live Demo](https://www.youtube.com/watch?v=yg_1n4yHOx4)**
+**[YouTube Demo](https://www.youtube.com/watch?v=yg_1n4yHOx4)**
+**[Live Site](https://www.makeapact.xyz/)**
 
 ## 🛠️ Tech Stack
 
