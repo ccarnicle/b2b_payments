@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { useWeb3 } from '@/lib/contexts/Web3Context';
@@ -78,6 +78,9 @@ export default function CreateVaultForm() {
     const [pactContentFile, setPactContentFile] = useState<File | null>(null);
     // State to hold the Synapse SDK instance
     const [synapseSdk, setSynapseSdk] = useState<Synapse | null>(null);
+    // State for Synapse timeout message
+    const [showSynapseHangMessage, setShowSynapseHangMessage] = useState(false);
+    const hangTimer = useRef<NodeJS.Timeout | null>(null);
 
     // Determine if the current chain is Filecoin Calibration Testnet
     const isOnCalibrationTestnet = useMemo(() => {
@@ -239,6 +242,10 @@ export default function CreateVaultForm() {
         }
 
         setSynapseLoading(true);
+        setShowSynapseHangMessage(false); // Reset on new attempt
+        if (hangTimer.current) {
+            clearTimeout(hangTimer.current); // Clear previous timer
+        }
         setSynapseProgressMessage("Uploading content to Filecoin via Synapse...");
         setSynapseProofSetId(null); // Clear any previous proofSetId
 
@@ -249,7 +256,18 @@ export default function CreateVaultForm() {
                     onProviderSelected: (provider: unknown) => setSynapseProgressMessage(`Selected storage provider: ${safeAccess(provider, 'owner')}`),
                     onProofSetResolved: (info: unknown) => setSynapseProgressMessage(`Proof set resolved: ${safeAccess(info, 'proofSetId')} (Existing: ${safeAccess(info, 'isExisting') === 'true' ? 'Yes' : 'No'})`),
                     onProofSetCreationStarted: (tx: unknown) => setSynapseProgressMessage(`Proof set creation initiated. Tx Hash: ${safeAccess(tx, 'hash')}`),
-                    onProofSetCreationProgress: (status: unknown) => setSynapseProgressMessage(`Proof set creation progress: Mined: ${safeAccess(status, 'transactionMined') === 'true' ? 'Yes' : 'No'}, Live: ${safeAccess(status, 'proofSetLive') === 'true' ? 'Yes' : 'No'}`),
+                    onProofSetCreationProgress: (status: unknown) => {
+                        const mined = safeAccess(status, 'transactionMined') === 'true';
+                        const live = safeAccess(status, 'proofSetLive') === 'true';
+                        setSynapseProgressMessage(`Proof set creation progress: Mined: ${mined ? 'Yes' : 'No'}, Live: ${live ? 'Yes' : 'No'}`);
+                        
+                        // Start a timer if the process seems to hang at the known problematic step
+                        if (mined && live) {
+                            hangTimer.current = setTimeout(() => {
+                                setShowSynapseHangMessage(true);
+                            }, 90000); // 90 seconds
+                        }
+                    },
                 }
             });
 
@@ -275,6 +293,9 @@ export default function CreateVaultForm() {
             setError(`Synapse content upload failed: ${errorMessage}`);
             setSynapseProofSetId(null); // Clear proofSetId on failure
         } finally {
+            if (hangTimer.current) {
+                clearTimeout(hangTimer.current);
+            }
             setSynapseLoading(false);
             setSynapseProgressMessage('');
         }
@@ -744,6 +765,14 @@ export default function CreateVaultForm() {
                             )}
                         </div>
                     )}
+                </div>
+            )}
+
+            {showSynapseHangMessage && (
+                <div className="my-4 p-4 border border-yellow-300 bg-yellow-50 rounded-md">
+                    <p className="font-semibold text-yellow-800">
+                        Proof set creation is taking longer than usual. This can hang on the first attempt. If it continues to hang, please refresh the page and it should work on the second attempt.
+                    </p>
                 </div>
             )}
 
