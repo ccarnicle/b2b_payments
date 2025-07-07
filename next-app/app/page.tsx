@@ -10,7 +10,9 @@ export default function LandingPage() {
           <div className="bg-primary text-primary-foreground rounded-2xl p-12 grid lg:grid-cols-5 gap-12 items-center">
             <div className="space-y-6 lg:col-span-3 text-center lg:text-left">
               <h1 className="text-3xl sm:text-5xl font-bold font-display tracking-tight leading-normal sm:leading-relaxed">
-                End the Payments Maze. Unlock Collaboration.
+                Simplify Payments.
+                <br />
+                Unlock Collaboration.
               </h1>
               <ul className="space-y-3 text-base sm:text-lg">
                 <li className="flex items-center justify-center lg:justify-start">

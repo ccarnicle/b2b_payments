@@ -31,7 +31,27 @@ With the core multi-chain functionality complete, the next steps are focused on 
 - [x] **UI/Layout Refactor:** Re-architect the UI into a dashboard layout with a dedicated sidebar for navigation.
 - [x] **Create New App Pages:** Build out pages for `/dashboard/active`, `/dashboard/completed`, and a placeholder for `/dashboard/invoices`.
 - [x] **Multi-Chain Integration:** Implemented a robust `Web3Context` to manage chain-specific details (RPC URLs, contract addresses, token info) and integrated it across the entire application. The UI now fully supports both Filecoin Calibration and Flow EVM testnets.
-- [ ] **Finalize Documentation & Record Demo:** Prepare all written materials and record the final demo video.
+- [X] **Finalize Documentation & Record Demo:** Prepare all written materials and record the final demo video.
+
+### 🔧 To Fix: Synapse SDK Server Confirmation Timeout
+
+**Issue:** First-time proof set creation on Filecoin Calibration Testnet experiences a server confirmation timeout. The proof set is successfully created on-chain (`transactionMined: true, proofSetLive: true`) but the server confirmation step hangs (`serverConfirmed: false`), causing the upload process to timeout after 7 minutes.
+
+**Symptoms:**
+- Upload hangs on "Proof set creation progress: Mined: Yes, Live: Yes"
+- First upload attempt fails with timeout error
+- Second attempt (after page refresh) works because existing proof set is detected
+- Error: "Timeout waiting for proof set creation after 420000ms"
+
+**Root Cause:** The Synapse SDK's server confirmation step can hang for new proof set creations, but the proof set is actually created successfully on-chain. This is a known issue with the Synapse SDK for first-time uploads.
+
+**Proposed Solution:** Implement retry logic with proof set ID recovery:
+1. Track proof set ID from callbacks even when server confirmation hangs
+2. Implement 3-retry mechanism with shorter timeouts (4min first, 2min retries)
+3. On final retry attempt, use captured proof set ID directly if available
+4. Provide clear user feedback about the recovery process
+
+**Files to Update:** `components/CreateVaultForm.tsx` - `handleSynapseContentUpload` function
 
 ### 🔮 Future Enhancements
 -   **Multi-Token Support:** Evolve the `Web3Context` to support creating pacts with multiple ERC20 tokens on a single network. This would involve changing the `primaryCoin` configuration to a `supportedTokens` dictionary and adding a token selector dropdown to the creation form, allowing users to choose from a list of supported tokens (e.g., USDFC, DAI, etc.) for their pact.
