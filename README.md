@@ -1,4 +1,4 @@
-# Pact: Decentralized B2B Payments & Escrow for Creators
+# Pact: Decentralized Payments Layer for the Creator Economy
 
 **Programmable payment vaults that turn payment friction into creative flow.**
 
